@@ -11,6 +11,7 @@ import { PassThrough } from 'stream';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import fetch from 'node-fetch';
 
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
 const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
@@ -83,8 +84,17 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
                     input_audio_format: 'pcm16',
                     output_audio_format: 'pcm16',
                     turn_detection: { type: 'server_vad' },
-                    voice
-                },
+                    voice,
+                    tools: [
+                        {
+                            type: 'function',
+                            name: 'get_chuck_norris_joke',
+                            description: 'Fetch a random joke from the Chuck Norris joke API.',
+                            parameters: { type: 'object', properties: {}, required: [] }
+                        }
+                    ],
+                    tool_choice: 'auto'
+                }
             }));
         });
         ws.on('message', (data) => {
@@ -95,6 +105,28 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
             } catch {
                 msg = null;
             }
+           // Handle function calls for Chuck Norris joke
+           if (msg && msg.type === 'response.done') {
+               const funcItem = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_chuck_norris_joke');
+               if (funcItem) {
+                   fetch('https://api.chucknorris.io/jokes/random')
+                     .then(res => res.json())
+                     .then(data => {
+                       const joke = data.value;
+                       ws.send(JSON.stringify({
+                         type: 'conversation.item.create',
+                         item: {
+                           type: 'function_call_output',
+                           call_id: funcItem.call_id,
+                           output: JSON.stringify({ joke })
+                         }
+                       }));
+                       ws.send(JSON.stringify({ type: 'response.create' }));
+                     })
+                     .catch(err => log.error('Error fetching Chuck Norris joke:', err));
+                   return;
+               }
+           }
             if (msg && msg.type === 'response.audio.delta') {
                 const audioBase64 = msg.delta;
                 if (audioBase64) {
