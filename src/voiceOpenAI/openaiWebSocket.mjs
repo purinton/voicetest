@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import fetch from 'node-fetch';
-import weather from '@purinton/openweathermap/index.mjs';
+import weather from '@purinton/openweathermap';
 
 /**
  * Creates a WebSocket connection to the OpenAI realtime API.
