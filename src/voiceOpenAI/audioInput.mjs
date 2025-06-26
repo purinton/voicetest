@@ -9,7 +9,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const userConverters = new Map();
     const activeUsers = new Set();
     let endTimer;
-    const DEBOUNCE_MS = 500;
+    const DEBOUNCE_MS = 100;
 
     voiceConnection.receiver.speaking.on('start', (userId) => {
         activeUsers.add(userId);
