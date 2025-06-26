@@ -1,5 +1,5 @@
 [Unit]
-Description=discord-template
+Description=voicetest
 After=network-online.target
 Wants=network-online.target
 StartLimitBurst=3
@@ -10,9 +10,9 @@ User=root
 Group=root
 RestartSec=5
 Restart=on-failure
-WorkingDirectory=/opt/discord-template
-ExecStart=/opt/discord-template/discord-template.mjs
-EnvironmentFile=/opt/discord-template/.env
+WorkingDirectory=/opt/voicetest
+ExecStart=/opt/voicetest/voicetest.mjs
+EnvironmentFile=/opt/voicetest/.env
 
 [Install]
 WantedBy=multi-user.target
