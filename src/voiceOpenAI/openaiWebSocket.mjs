@@ -34,6 +34,9 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             },
             {
                 type: 'function', name: 'get_24h_forecast', description: 'Get 24-hour weather forecast for a location. Parameters: lat (number), lon (number)', parameters: { type: 'object', properties: { lat: { type: 'number' }, lon: { type: 'number' } }, required: ['lat', 'lon'] }
+            },
+            {
+                type: 'function', name: 'get_current_datetime', description: 'Get the current date and time in UTC and local time.', parameters: { type: 'object', properties: {}, required: [] }
             }
         ],
         tool_choice: 'auto'
@@ -257,6 +260,31 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
                         }));
                         ws.send(JSON.stringify({ type: 'response.create' }));
                     });
+                return;
+            }
+            // handle get_current_datetime calls
+            const funcNow = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_current_datetime');
+            if (funcNow) {
+                log.debug('[get_current_datetime] called');
+                const now = new Date();
+                const utc = now.toISOString();
+                const local = now.toLocaleString();
+                const result = {
+                    utc,
+                    local,
+                    unix: Math.floor(now.getTime() / 1000),
+                    iso: utc,
+                    localString: local
+                };
+                ws.send(JSON.stringify({
+                    type: 'conversation.item.create',
+                    item: {
+                        type: 'function_call_output',
+                        call_id: funcNow.call_id,
+                        output: JSON.stringify(result)
+                    }
+                }));
+                ws.send(JSON.stringify({ type: 'response.create' }));
                 return;
             }
         }
