@@ -149,7 +149,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
             });
             userConverters.set(userId, { opusDecoder, converter });
         }
-        opusStream.on('end', () => {
+        opusStream.once('end', () => {
             log.info(`User ${userId} stopped speaking`);
             const entry = userConverters.get(userId);
             if (entry) {
