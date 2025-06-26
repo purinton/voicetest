@@ -18,7 +18,12 @@ export default async function ({ log, presence, registerSignals }, client) {
                 openAIApiKey,
                 log
             });
-            registerSignals({ log, shutdownHook: () => cleanup() });
+            registerSignals({
+                log, shutdownHook: async () => {
+                    await cleanup();
+                    await client.destroy();
+                }
+            });
         } catch (err) {
             log.error('Voice/OpenAI setup failed:', err);
         }

@@ -20,4 +20,3 @@ const client = await createDiscord({
         registerSignals,
     }
 });
-registerSignals({ log, shutdownHook: () => client.destroy() });
