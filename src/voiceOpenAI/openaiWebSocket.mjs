@@ -31,11 +31,16 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             },
             {
                 type: 'function', name: 'get_sun_times', description: 'Get sunrise and sunset times for a location. Parameters: lat (number), lon (number)', parameters: { type: 'object', properties: { lat: { type: 'number' }, lon: { type: 'number' } }, required: ['lat', 'lon'] }
+            },
+            {
+                type: 'function', name: 'get_24h_forecast', description: 'Get 24-hour weather forecast for a location. Parameters: lat (number), lon (number)', parameters: { type: 'object', properties: { lat: { type: 'number' }, lon: { type: 'number' } }, required: ['lat', 'lon'] }
             }
         ],
         tool_choice: 'auto'
     };
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' }});
+    // Track call_ids for which we should skip response.create
+    const skipResponseCreate = new Set();
     ws.on('open', () => {
         log.info('Connected to OpenAI Realtime WebSocket');
         ws.send(JSON.stringify({ type: 'session.update', session: sessionConfig }));
@@ -88,6 +93,8 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
                         output: JSON.stringify({ ok: true })
                     }
                 }));
+                // Mark this call_id to skip response.create
+                skipResponseCreate.add(funcNoResp.call_id);
                 return;
             }
             // handle get_weather calls
@@ -141,6 +148,57 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
                     });
                 return;
             }
+            // handle get_24h_forecast calls
+            const funcForecast = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_24h_forecast');
+            if (funcForecast) {
+                let lat, lon;
+                try {
+                    ({ lat, lon } = JSON.parse(funcForecast.arguments || '{}'));
+                } catch (e) {
+                    log.warn(`[get_24h_forecast] Failed to parse arguments: ${funcForecast.arguments}`);
+                }
+                log.debug(`[get_24h_forecast] called with lat=${lat}, lon=${lon}`);
+                if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+                    log.warn(`[get_24h_forecast] Invalid or missing lat/lon: lat=${lat}, lon=${lon}`);
+                    ws.send(JSON.stringify({
+                        type: 'conversation.item.create',
+                        item: {
+                            type: 'function_call_output',
+                            call_id: funcForecast.call_id,
+                            output: JSON.stringify({ error: 'Missing or invalid lat/lon for get_24h_forecast' })
+                        }
+                    }));
+                    ws.send(JSON.stringify({ type: 'response.create' }));
+                    return;
+                }
+                weather.get24hForecast(lat, lon)
+                    .then(data => {
+                        log.debug(`[get_24h_forecast] API result:`, data);
+                        ws.send(JSON.stringify({
+                            type: 'conversation.item.create',
+                            item: {
+                                type: 'function_call_output',
+                                call_id: funcForecast.call_id,
+                                output: JSON.stringify(data)
+                            }
+                        }));
+                        ws.send(JSON.stringify({ type: 'response.create' }));
+                    })
+                    .catch(err => {
+                        log.error('Error fetching 24h forecast:', err);
+                        log.debug(`[get_24h_forecast] failed with error:`, err);
+                        ws.send(JSON.stringify({
+                            type: 'conversation.item.create',
+                            item: {
+                                type: 'function_call_output',
+                                call_id: funcForecast.call_id,
+                                output: JSON.stringify({ error: 'Failed to fetch 24h forecast' })
+                            }
+                        }));
+                        ws.send(JSON.stringify({ type: 'response.create' }));
+                    });
+                return;
+            }
             // handle get_sun_times calls
             const funcSun = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_sun_times');
             if (funcSun) {
@@ -167,12 +225,21 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
                 weather.getSun(lat, lon)
                     .then(data => {
                         log.debug(`[get_sun_times] API result:`, data);
+                        // Convert unix timestamps to readable UTC/local datetimes
+                        let result = { ...data };
+                        if (data) {
+                            const toISO = ts => ts ? new Date(ts * 1000).toISOString() : null;
+                            result.sunriseUtcISO = toISO(data.sunriseUtc);
+                            result.sunsetUtcISO = toISO(data.sunsetUtc);
+                            result.sunriseLocalISO = toISO(data.sunriseLocal);
+                            result.sunsetLocalISO = toISO(data.sunsetLocal);
+                        }
                         ws.send(JSON.stringify({
                             type: 'conversation.item.create',
                             item: {
                                 type: 'function_call_output',
                                 call_id: funcSun.call_id,
-                                output: JSON.stringify(data)
+                                output: JSON.stringify(result)
                             }
                         }));
                         ws.send(JSON.stringify({ type: 'response.create' }));
@@ -207,5 +274,18 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
     });
     ws.on('error', (err) => log.error('OpenAI WebSocket error:', err));
     ws.on('close', () => log.info('OpenAI WebSocket closed'));
+    // Intercept outgoing response.create and skip if needed
+    const origSend = ws.send.bind(ws);
+    ws.send = function (data, ...args) {
+        try {
+            const obj = typeof data === 'string' ? JSON.parse(data) : data;
+            if (obj && obj.type === 'response.create' && obj.call_id && skipResponseCreate.has(obj.call_id)) {
+                log.debug(`[no_response] Skipping response.create for call_id=${obj.call_id}`);
+                skipResponseCreate.delete(obj.call_id);
+                return;
+            }
+        } catch (e) { /* ignore parse errors, send as normal */ }
+        return origSend(data, ...args);
+    };
     return ws;
 }
