@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import fetch from 'node-fetch';
+import weather from '@purinton/openweathermap/index.mjs';
 
 /**
  * Creates a WebSocket connection to the OpenAI realtime API.
@@ -24,6 +25,12 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             },
             {
                 type: 'function', name: 'no_response', description: 'Call this if no response is required.', parameters: { type: 'object', properties: {}, required: [] }
+            },
+            {
+                type: 'function', name: 'get_weather', description: 'Get current weather for a location. Parameters: lat (number), lon (number)', parameters: { type: 'object', properties: { lat: { type: 'number' }, lon: { type: 'number' } }, required: ['lat', 'lon'] }
+            },
+            {
+                type: 'function', name: 'get_sun_times', description: 'Get sunrise and sunset times for a location. Parameters: lat (number), lon (number)', parameters: { type: 'object', properties: { lat: { type: 'number' }, lon: { type: 'number' } }, required: ['lat', 'lon'] }
             }
         ],
         tool_choice: 'auto'
@@ -81,6 +88,66 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
                         output: JSON.stringify({ ok: true })
                     }
                 }));
+                return;
+            }
+            // handle get_weather calls
+            const funcWeather = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_weather');
+            if (funcWeather) {
+                const { lat, lon } = funcWeather.arguments || {};
+                weather.getCurrent(lat, lon)
+                    .then(data => {
+                        ws.send(JSON.stringify({
+                            type: 'conversation.item.create',
+                            item: {
+                                type: 'function_call_output',
+                                call_id: funcWeather.call_id,
+                                output: JSON.stringify(data)
+                            }
+                        }));
+                        ws.send(JSON.stringify({ type: 'response.create' }));
+                    })
+                    .catch(err => {
+                        log.error('Error fetching weather:', err);
+                        ws.send(JSON.stringify({
+                            type: 'conversation.item.create',
+                            item: {
+                                type: 'function_call_output',
+                                call_id: funcWeather.call_id,
+                                output: JSON.stringify({ error: 'Failed to fetch weather' })
+                            }
+                        }));
+                        ws.send(JSON.stringify({ type: 'response.create' }));
+                    });
+                return;
+            }
+            // handle get_sun_times calls
+            const funcSun = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_sun_times');
+            if (funcSun) {
+                const { lat, lon } = funcSun.arguments || {};
+                weather.getSun(lat, lon)
+                    .then(data => {
+                        ws.send(JSON.stringify({
+                            type: 'conversation.item.create',
+                            item: {
+                                type: 'function_call_output',
+                                call_id: funcSun.call_id,
+                                output: JSON.stringify(data)
+                            }
+                        }));
+                        ws.send(JSON.stringify({ type: 'response.create' }));
+                    })
+                    .catch(err => {
+                        log.error('Error fetching sun times:', err);
+                        ws.send(JSON.stringify({
+                            type: 'conversation.item.create',
+                            item: {
+                                type: 'function_call_output',
+                                call_id: funcSun.call_id,
+                                output: JSON.stringify({ error: 'Failed to fetch sun times' })
+                            }
+                        }));
+                        ws.send(JSON.stringify({ type: 'response.create' }));
+                    });
                 return;
             }
         }
