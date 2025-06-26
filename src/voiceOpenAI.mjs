@@ -43,7 +43,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
                 '-ac', '1',
                 '-i', '-',
                 // add filter to lower pitch by ~3 semitones (factor ~0.84)
-                '-af', 'asetrate=40320,aresample=48000',
+                '-af', 'asetrate=40320,aresample=48000,atempo=1.189',
                 '-f', 's16le',
                 '-ar', '48000',
                 '-ac', '1',
@@ -167,6 +167,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
             opusStream.once('end', () => {
                 log.info(`User ${userId} stopped speaking`);
                 const entry = userConverters.get(userId);
+                // Co-Pilot Glitch
                 if (entry) {
                     entry.converter.stdin.end();
                     userConverters.delete(userId);
