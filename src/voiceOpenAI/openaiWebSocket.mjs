@@ -1,8 +1,8 @@
 import WebSocket from 'ws';
-import { getSessionConfig } from './voiceOpenAI/openaiWebSocket/sessionConfig.mjs';
-import { handleFunctionCall } from './voiceOpenAI/openaiWebSocket/messageHandlers.mjs';
-import { handleAudioDelta, handleAudioDone } from './voiceOpenAI/openaiWebSocket/audioHandlers.mjs';
-import { wrapWsSend } from './voiceOpenAI/openaiWebSocket/wsSendWrapper.mjs';
+import { getSessionConfig } from './openaiWebSocket/sessionConfig.mjs';
+import { handleFunctionCall } from './openaiWebSocket/messageHandlers.mjs';
+import { handleAudioDelta, handleAudioDone } from './openaiWebSocket/audioHandlers.mjs';
+import { wrapWsSend } from './openaiWebSocket/wsSendWrapper.mjs';
 
 /**
  * Creates a WebSocket connection to the OpenAI realtime API.
