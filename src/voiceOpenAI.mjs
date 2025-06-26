@@ -38,16 +38,15 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         if (!handleOpenAIAudio.playbackStream) {
             handleOpenAIAudio.playbackStream = new PassThrough();
             const ffmpegArgs = [
-                '-f', 's16le',
-                '-ar', '24000',
-                '-ac', '1',
-                '-i', '-',
-                // add filter to lower pitch by ~3 semitones (factor ~0.84)
-                '-af', 'asetrate=40320,aresample=48000,atempo=1.189',
-                '-f', 's16le',
-                '-ar', '48000',
-                '-ac', '1',
-                'pipe:1',
+            '-f', 's16le',
+            '-ar', '24000',
+            '-ac', '1',
+            '-i', '-',
+            '-filter:a', 'rubberband=pitch=-3',
+            '-f', 's16le',
+            '-ar', '48000',
+            '-ac', '1',
+            'pipe:1',
             ];
             const ffmpegProcess = spawn(ffmpegStatic, ffmpegArgs);
             ffmpegProcess.on('error', log.error);
@@ -167,7 +166,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
             opusStream.once('end', () => {
                 log.info(`User ${userId} stopped speaking`);
                 const entry = userConverters.get(userId);
-                // Co-Pilot Glitch
+                // Co-pilot Glitch?
                 if (entry) {
                     entry.converter.stdin.end();
                     userConverters.delete(userId);
