@@ -42,7 +42,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
             '-ar', '24000',
             '-ac', '1',
             '-i', '-',
-            '-filter:a', 'rubberband=pitch=-3',
+            '-filter:a', 'rubberband=pitch=0.841',
             '-f', 's16le',
             '-ar', '48000',
             '-ac', '1',
