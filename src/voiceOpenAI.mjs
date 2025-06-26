@@ -15,7 +15,7 @@ import path from 'path';
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
 const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
 
-export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, voice, log }) {
+export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, voice, filter, log }) {
     let voiceConnection;
     let audioPlayer;
     let openAIWS;
@@ -42,7 +42,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
                 '-ar', '24000',
                 '-ac', '1',
                 '-i', '-',
-                //'-filter:a', 'rubberband=pitch=0.92:tempo=1.05',
+                '-filter:a', filter,
                 '-f', 's16le',
                 '-ar', '48000',
                 '-ac', '1',
