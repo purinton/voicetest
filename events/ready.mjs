@@ -1,5 +1,5 @@
 // events/ready.mjs
-export default async function ({ log, presence }, client) {
+export default async function ({ log, presence, registerSignals }, client) {
     log.debug('ready', { tag: client.user.tag });
     log.info(`Logged in as ${client.user.tag}`);
     if (presence) client.user.setPresence(presence);
@@ -18,10 +18,7 @@ export default async function ({ log, presence }, client) {
                 openAIApiKey,
                 log
             });
-            // Optionally register cleanup for shutdown if your framework supports it
-            if (typeof global !== 'undefined') {
-                global.voiceOpenAICleanup = cleanup;
-            }
+            registerSignals({ log, shutdownHook: () => cleanup() });
         } catch (err) {
             log.error('Voice/OpenAI setup failed:', err);
         }

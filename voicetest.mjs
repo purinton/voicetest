@@ -16,7 +16,8 @@ const client = await createDiscord({
     rootDir: path(import.meta),
     context: {
         presence,
-        version
+        version,
+        registerSignals,
     }
 });
-registerSignals({ shutdownHook: () => client.destroy() });
+registerSignals({ log, shutdownHook: () => client.destroy() });

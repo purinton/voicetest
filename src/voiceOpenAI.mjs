@@ -174,6 +174,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
 
     // Return cleanup function for shutdown
     return async () => {
+        log.debug('Cleaning up Voice/OpenAI resources');
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) openAIWS.close();
         if (voiceConnection) {
             try { voiceConnection.destroy(); } catch (e) { log.error('Error destroying voice connection:', e); }
