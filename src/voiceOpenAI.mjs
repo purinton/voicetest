@@ -38,15 +38,15 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         if (!handleOpenAIAudio.playbackStream) {
             handleOpenAIAudio.playbackStream = new PassThrough();
             const ffmpegArgs = [
-            '-f', 's16le',
-            '-ar', '24000',
-            '-ac', '1',
-            '-i', '-',
-            '-filter:a', 'rubberband=pitch=0.9',
-            '-f', 's16le',
-            '-ar', '48000',
-            '-ac', '1',
-            'pipe:1',
+                '-f', 's16le',
+                '-ar', '24000',
+                '-ac', '1',
+                '-i', '-',
+                '-filter:a', 'rubberband=pitch=0.9:tempo=1.1',
+                '-f', 's16le',
+                '-ar', '48000',
+                '-ac', '1',
+                'pipe:1',
             ];
             const ffmpegProcess = spawn(ffmpegStatic, ffmpegArgs);
             ffmpegProcess.on('error', log.error);
