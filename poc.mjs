@@ -1,4 +1,3 @@
-import fs from 'fs';
 import { config } from 'dotenv';
 import { Client, GatewayIntentBits } from 'discord.js';
 import {
@@ -32,38 +31,23 @@ const client = new Client({
 let voiceConnection;
 let audioPlayer;
 let openAIWS;
-let session = {
-    lastAssistantItem: undefined,
-    responseStartTimestamp: undefined,
-    latestMediaTimestamp: undefined,
-};
 
-// Buffer size for 20 ms frames at 48kHz 16-bit mono PCM
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
-// Buffer size for 20 ms frames at 24kHz 16-bit mono PCM
 const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
-
-function pcmToOpusStream() {
-    return new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
-}
 
 let openaiPcmCache = Buffer.alloc(0);
 
 function handleOpenAIAudio(audioBuffer) {
     if (!audioPlayer || !voiceConnection) return;
 
-    const pcmBuffer = audioBuffer;
-
-    // Buffer and frame into 20ms chunks
-    openaiPcmCache = Buffer.concat([openaiPcmCache, pcmBuffer]);
+    openaiPcmCache = Buffer.concat([openaiPcmCache, audioBuffer]);
 
     if (!handleOpenAIAudio.playbackStream) {
         handleOpenAIAudio.playbackStream = new PassThrough();
 
-        // Transcode from 16bit PCM mono at 24kHz to 48kHz mono signed 16-bit via direct ffmpeg spawn
         const ffmpegArgs = [
             '-f', 's16le',
-            '-ar', '24000', // input sample rate
+            '-ar', '24000',
             '-ac', '1',
             '-i', '-',
             '-f', 's16le',
@@ -75,7 +59,6 @@ function handleOpenAIAudio(audioBuffer) {
         ffmpegProcess.on('error', console.error);
         ffmpegProcess.stderr.on('data', data => console.error('ffmpeg stderr:', data.toString()));
         const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
-        // Pipe openAI PCM -> ffmpeg stdin -> ffmpeg stdout -> opus encoder -> play
         handleOpenAIAudio.playbackStream.pipe(ffmpegProcess.stdin);
         ffmpegProcess.stdout.pipe(opusEncoder);
         const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
@@ -89,8 +72,6 @@ function handleOpenAIAudio(audioBuffer) {
     }
 }
 
-let discordPcmCache = Buffer.alloc(0);
-// Track active converters per user
 const userConverters = new Map();
 
 client.once('ready', async () => {
@@ -127,7 +108,6 @@ client.once('ready', async () => {
                 end: { behavior: 'silence', duration: 100 },
             });
 
-            // If first time this user speaks, set up a converter
             if (!userConverters.has(userId)) {
                 const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 48000 });
                 opusStream.pipe(opusDecoder);
@@ -153,7 +133,6 @@ client.once('ready', async () => {
 
             opusStream.on('end', () => {
                 console.log(`User ${userId} stopped speaking`);
-                // Clean up the converter for this user
                 const entry = userConverters.get(userId);
                 if (entry) {
                     entry.converter.stdin.end();
@@ -231,5 +210,40 @@ function createOpenAIWebSocket() {
 }
 
 client.login(DISCORD_TOKEN);
+
+// Graceful shutdown handlers
+async function shutdown() {
+    console.log('Shutting down gracefully...');
+    if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
+        openAIWS.close();
+    }
+    if (voiceConnection) {
+        try {
+            voiceConnection.destroy();
+        } catch (e) {
+            console.error('Error destroying voice connection:', e);
+        }
+    }
+    if (audioPlayer) {
+        try {
+            audioPlayer.stop();
+        } catch (e) {
+            console.error('Error stopping audio player:', e);
+        }
+    }
+    await client.destroy();
+    process.exit(0);
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+process.on('uncaughtException', async (err) => {
+    console.error('Uncaught Exception:', err);
+    await shutdown();
+});
+process.on('unhandledRejection', async (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    await shutdown();
+});
 
 
