@@ -2,7 +2,6 @@ import WebSocket from 'ws';
 import { getSessionConfig } from './openaiWebSocket/sessionConfig.mjs';
 import { handleFunctionCall } from './openaiWebSocket/messageHandlers.mjs';
 import { handleAudioDelta, handleAudioDone } from './openaiWebSocket/audioHandlers.mjs';
-import { wrapWsSend } from './openaiWebSocket/wsSendWrapper.mjs';
 
 /**
  * Creates a WebSocket connection to the OpenAI realtime API.
@@ -10,7 +9,7 @@ import { wrapWsSend } from './openaiWebSocket/wsSendWrapper.mjs';
 export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, playback }) {
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     const sessionConfig = getSessionConfig({ instructions, voice });
-    const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' }});
+    const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
     ws.skipResponseCreate = new Set();
     ws.on('open', () => {
         log.info('Connected to OpenAI Realtime WebSocket');
@@ -25,8 +24,14 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             msg = null;
         }
         if (msg && msg.type === 'response.done') {
-            const handled = await handleFunctionCall({ msg, ws, log, sessionConfig });
-            if (handled) return;
+            const { handled, skipResponse } = await handleFunctionCall({ msg, ws, log, sessionConfig });
+            if (handled) {
+                // send next response.create unless explicitly skipped
+                if (!skipResponse) {
+                    ws.send(JSON.stringify({ type: 'response.create' }));
+                }
+                return;
+            }
         }
         if (msg && msg.type === 'response.audio.delta') {
             handleAudioDelta({ msg, playback, log });
@@ -36,6 +41,5 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
     });
     ws.on('error', (err) => log.error('OpenAI WebSocket error:', err));
     ws.on('close', () => log.info('OpenAI WebSocket closed'));
-    wrapWsSend(ws, ws.skipResponseCreate, log);
     return ws;
 }
