@@ -1,0 +1,57 @@
+import WebSocket from 'ws';
+import prism from 'prism-media';
+import ffmpegStatic from 'ffmpeg-static';
+import { spawn } from 'child_process';
+
+const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
+
+export function setupAudioInput({ voiceConnection, openAIWS, log }) {
+    const userConverters = new Map();
+
+    voiceConnection.receiver.speaking.on('start', (userId) => {
+        log.info(`User ${userId} started speaking`);
+        const opusStream = voiceConnection.receiver.subscribe(userId, {
+            end: { behavior: 'silence', duration: 100 },
+        });
+        if (!userConverters.has(userId)) {
+            const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 48000 });
+            opusStream.pipe(opusDecoder);
+            const converter = spawn(ffmpegStatic, [
+                '-f', 's16le',
+                '-ar', '48000',
+                '-ac', '1',
+                '-i', '-',
+                '-f', 's16le',
+                '-ar', '24000',
+                '-ac', '1',
+                'pipe:1',
+            ]);
+            converter.on('error', log.error);
+            converter.stderr.on('data', data => log.debug('discord ffmpeg stderr:', data.toString()));
+            opusDecoder.pipe(converter.stdin);
+            let cache = Buffer.alloc(0);
+            converter.stdout.on('data', chunk => {
+                cache = Buffer.concat([cache, chunk]);
+                while (cache.length >= PCM_FRAME_SIZE_BYTES_24) {
+                    const frame = cache.slice(0, PCM_FRAME_SIZE_BYTES_24);
+                    cache = cache.slice(PCM_FRAME_SIZE_BYTES_24);
+                    if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
+                        openAIWS.send(JSON.stringify({
+                            type: 'input_audio_buffer.append',
+                            audio: frame.toString('base64'),
+                        }));
+                    }
+                }
+            });
+            userConverters.set(userId, { opusDecoder, converter });
+            opusStream.once('end', () => {
+                log.info(`User ${userId} stopped speaking`);
+                const entry = userConverters.get(userId);
+                if (entry) {
+                    entry.converter.stdin.end();
+                    userConverters.delete(userId);
+                }
+            });
+        }
+    });
+}
