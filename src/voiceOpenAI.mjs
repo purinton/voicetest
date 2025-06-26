@@ -9,6 +9,8 @@ import prism from 'prism-media';
 import ffmpegStatic from 'ffmpeg-static';
 import { PassThrough } from 'stream';
 import { spawn } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
 const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
@@ -19,6 +21,16 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
     let openAIWS;
     let openaiPcmCache = Buffer.alloc(0);
     const userConverters = new Map();
+
+    // Load instructions.txt for OpenAI system prompt
+    let instructions = '';
+    try {
+        const instructionsPath = path.resolve(process.cwd(), 'instructions.txt');
+        instructions = fs.readFileSync(instructionsPath, 'utf8');
+        log.info('Loaded instructions.txt for OpenAI system prompt');
+    } catch (err) {
+        log.warn('Could not load instructions.txt:', err);
+    }
 
     function handleOpenAIAudio(audioBuffer) {
         if (!audioPlayer || !voiceConnection) return;
@@ -65,11 +77,12 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
                 type: 'session.update',
                 session: {
                     modalities: ['text', 'audio'],
+                    instructions,
                     input_audio_transcription: { model: 'gpt-4o-mini-transcribe' },
                     input_audio_format: 'pcm16',
                     output_audio_format: 'pcm16',
                     turn_detection: { type: 'server_vad' },
-                    voice: 'ash',
+                    voice: 'ballad',
                 },
             }));
         });
