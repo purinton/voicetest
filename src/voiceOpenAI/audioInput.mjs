@@ -7,8 +7,13 @@ const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
 
 export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const userConverters = new Map();
+    const activeUsers = new Set();
+    let endTimer;
+    const DEBOUNCE_MS = 500;
 
     voiceConnection.receiver.speaking.on('start', (userId) => {
+        activeUsers.add(userId);
+        if (endTimer) { clearTimeout(endTimer); endTimer = null; }
         log.info(`User ${userId} started speaking`);
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 100 },
@@ -46,10 +51,16 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             userConverters.set(userId, { opusDecoder, converter });
             opusStream.once('end', () => {
                 log.info(`User ${userId} stopped speaking`);
-                const entry = userConverters.get(userId);
-                if (entry) {
-                    entry.converter.stdin.end();
-                    userConverters.delete(userId);
+                activeUsers.delete(userId);
+                if (activeUsers.size === 0) {
+                    endTimer = setTimeout(() => {
+                        for (const { converter } of userConverters.values()) {
+                            converter.stdin.end();
+                        }
+                        userConverters.clear();
+                        activeUsers.clear();
+                        endTimer = null;
+                    }, DEBOUNCE_MS);
                 }
             });
         }
