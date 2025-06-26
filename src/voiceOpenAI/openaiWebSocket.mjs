@@ -4,7 +4,7 @@ import fetch from 'node-fetch';
 /**
  * Creates a WebSocket connection to the OpenAI realtime API.
  */
-export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, handleAudio }) {
+export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, playback }) {
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     const ws = new WebSocket(url, {
         headers: {
@@ -70,11 +70,11 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             if (audioBase64) {
                 const audioBuffer = Buffer.from(audioBase64, 'base64');
                 log.debug(`[OpenAI audio delta] size: ${audioBuffer.length} bytes`);
-                handleAudio(audioBuffer);
+                playback.handleAudio(audioBuffer);
             }
         } else if (msg && msg.type === 'response.audio.done') {
             log.info('OpenAI audio stream done, resetting playback');
-            handleAudio.reset();
+            playback.reset();
         }
     });
     ws.on('error', (err) => log.error('OpenAI WebSocket error:', err));

@@ -8,7 +8,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
     const instructions = loadInstructions(log);
     const { voiceConnection, audioPlayer } = setupVoiceConnection({ client, guildId, voiceChannelId, log });
     const playback = createAudioPlayback(filter, audioPlayer, log);
-    const openAIWS = createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, handleAudio: playback.handleAudio });
+    const openAIWS = createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, playback });
     setupAudioInput({ voiceConnection, openAIWS, log });
     return async () => {
         log.debug('Cleaning up Voice/OpenAI resources');
