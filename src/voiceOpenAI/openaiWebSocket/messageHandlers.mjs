@@ -29,13 +29,6 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
         ws.send(JSON.stringify({ type: 'session.update', session: sessionConfig }));
         return { handled: true, skipResponse: true };
     }
-    // no_response
-    const funcNoResp = msg.response.output.find(item => item.type === 'function_call' && item.name === 'no_response');
-    if (funcNoResp) {
-        log.info('Received no_response, sending empty OK');
-        sendOutput(funcNoResp.call_id, { ok: true });
-        return { handled: true, skipResponse: true };
-    }
     // get_weather
     const funcWeather = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_weather');
     if (funcWeather) {

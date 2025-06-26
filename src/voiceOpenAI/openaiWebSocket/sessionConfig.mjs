@@ -16,9 +16,6 @@ export function getSessionConfig({ instructions, voice }) {
                 type: 'function', name: 'clear_conversation', description: 'Clears and restarts the conversation', parameters: { type: 'object', properties: {}, required: [] }
             },
             {
-                type: 'function', name: 'no_response', description: 'Call this if no response is required.', parameters: { type: 'object', properties: {}, required: [] }
-            },
-            {
                 type: 'function', name: 'get_weather', description: 'Get current weather for a location. Parameters: lat (number), lon (number)', parameters: { type: 'object', properties: { lat: { type: 'number' }, lon: { type: 'number' } }, required: ['lat', 'lon'] }
             },
             {

@@ -24,12 +24,9 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             msg = null;
         }
         if (msg && msg.type === 'response.done') {
-            const { handled, skipResponse } = await handleFunctionCall({ msg, ws, log, sessionConfig });
+            const { handled } = await handleFunctionCall({ msg, ws, log, sessionConfig });
             if (handled) {
-                // send next response.create unless explicitly skipped
-                if (!skipResponse) {
-                    ws.send(JSON.stringify({ type: 'response.create' }));
-                }
+                ws.send(JSON.stringify({ type: 'response.create' }));
                 return;
             }
         }
