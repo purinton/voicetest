@@ -161,15 +161,16 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
                 }
             });
             userConverters.set(userId, { opusDecoder, converter });
+            // Attach end listener only once when converter is created
+            opusStream.once('end', () => {
+                log.info(`User ${userId} stopped speaking`);
+                const entry = userConverters.get(userId);
+                if (entry) {
+                    entry.converter.stdin.end();
+                    userConverters.delete(userId);
+                }
+            });
         }
-        opusStream.once('end', () => {
-            log.info(`User ${userId} stopped speaking`);
-            const entry = userConverters.get(userId);
-            if (entry) {
-                entry.converter.stdin.end();
-                userConverters.delete(userId);
-            }
-        });
     });
 
     // Return cleanup function for shutdown
