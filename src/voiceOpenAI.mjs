@@ -15,7 +15,7 @@ import path from 'path';
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
 const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
 
-export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, log }) {
+export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, voice, log }) {
     let voiceConnection;
     let audioPlayer;
     let openAIWS;
@@ -42,7 +42,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
                 '-ar', '24000',
                 '-ac', '1',
                 '-i', '-',
-                '-filter:a', 'rubberband=pitch=0.92:tempo=1.05',
+                //'-filter:a', 'rubberband=pitch=0.92:tempo=1.05',
                 '-f', 's16le',
                 '-ar', '48000',
                 '-ac', '1',
@@ -83,7 +83,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
                     input_audio_format: 'pcm16',
                     output_audio_format: 'pcm16',
                     turn_detection: { type: 'server_vad' },
-                    voice: 'ballad',
+                    voice
                 },
             }));
         });

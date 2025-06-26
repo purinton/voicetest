@@ -11,6 +11,8 @@ const version = packageJson.version;
 
 const presence = { activities: [{ name: `voicetest v${version}`, type: 4 }], status: 'online' };
 
+const voice = 'sage';
+
 const client = await createDiscord({
     log,
     rootDir: path(import.meta),
@@ -18,5 +20,6 @@ const client = await createDiscord({
         presence,
         version,
         registerSignals,
+        voice
     }
 });
