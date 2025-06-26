@@ -25,9 +25,8 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
     // clear_conversation
     const funcClear = msg.response.output.find(item => item.type === 'function_call' && item.name === 'clear_conversation');
     if (funcClear) {
-        log.info('Received clear_conversation, restarting session');
-        ws.send(JSON.stringify({ type: 'session.update', session: sessionConfig }));
-        return { handled: true, skipResponse: true };
+        log.info('Received clear_conversation, requesting websocket restart');
+        return { handled: true, skipResponse: true, restart: true };
     }
     // get_weather
     const funcWeather = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_weather');

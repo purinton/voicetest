@@ -8,11 +8,37 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
     const instructions = loadInstructions(log);
     const { voiceConnection, audioPlayer } = setupVoiceConnection({ client, guildId, voiceChannelId, log });
     const playback = createAudioPlayback(filter, audioPlayer, log);
-    const openAIWS = createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, playback });
-    setupAudioInput({ voiceConnection, openAIWS, log });
+    let openAIWS;
+    let audioInputCleanup;
+
+    function restartWebSocket() {
+        if (openAIWS && openAIWS.readyState === 1) openAIWS.close();
+        if (audioInputCleanup) audioInputCleanup();
+        openAIWS = createOpenAIWebSocket({
+            openAIApiKey,
+            instructions,
+            voice,
+            log,
+            playback,
+            onRestart: restartWebSocket
+        });
+        audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
+    }
+
+    openAIWS = createOpenAIWebSocket({
+        openAIApiKey,
+        instructions,
+        voice,
+        log,
+        playback,
+        onRestart: restartWebSocket
+    });
+    audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
+
     return async () => {
         log.debug('Cleaning up Voice/OpenAI resources');
         if (openAIWS && openAIWS.readyState === 1) openAIWS.close();
+        if (audioInputCleanup) audioInputCleanup();
         if (voiceConnection) {
             try { voiceConnection.destroy(); } catch (e) { log.error('Error destroying voice connection:', e); }
         }

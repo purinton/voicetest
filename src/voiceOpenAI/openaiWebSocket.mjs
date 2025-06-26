@@ -5,8 +5,9 @@ import { handleAudioDelta, handleAudioDone } from './openaiWebSocket/audioHandle
 
 /**
  * Creates a WebSocket connection to the OpenAI realtime API.
+ * Accepts an optional onRestart callback to handle session restarts.
  */
-export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, playback }) {
+export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, playback, onRestart }) {
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     const sessionConfig = getSessionConfig({ instructions, voice });
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
@@ -24,8 +25,14 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             msg = null;
         }
         if (msg && msg.type === 'response.done') {
-            const { handled } = await handleFunctionCall({ msg, ws, log, sessionConfig });
-            if (handled) {
+            const result = await handleFunctionCall({ msg, ws, log, sessionConfig });
+            if (result && result.handled) {
+                if (result.restart && typeof onRestart === 'function') {
+                    log.info('Restarting OpenAI WebSocket session...');
+                    ws.close();
+                    onRestart();
+                    return;
+                }
                 ws.send(JSON.stringify({ type: 'response.create' }));
                 return;
             }
