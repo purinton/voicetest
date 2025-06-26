@@ -93,8 +93,26 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             // handle get_weather calls
             const funcWeather = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_weather');
             if (funcWeather) {
-                const { lat, lon } = funcWeather.arguments || {};
+                let lat, lon;
+                try {
+                    ({ lat, lon } = JSON.parse(funcWeather.arguments || '{}'));
+                } catch (e) {
+                    log.warn(`[get_weather] Failed to parse arguments: ${funcWeather.arguments}`);
+                }
                 log.debug(`[get_weather] called with lat=${lat}, lon=${lon}`);
+                if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+                    log.warn(`[get_weather] Invalid or missing lat/lon: lat=${lat}, lon=${lon}`);
+                    ws.send(JSON.stringify({
+                        type: 'conversation.item.create',
+                        item: {
+                            type: 'function_call_output',
+                            call_id: funcWeather.call_id,
+                            output: JSON.stringify({ error: 'Missing or invalid lat/lon for get_weather' })
+                        }
+                    }));
+                    ws.send(JSON.stringify({ type: 'response.create' }));
+                    return;
+                }
                 weather.getCurrent(lat, lon)
                     .then(data => {
                         log.debug(`[get_weather] API result:`, data);
@@ -126,8 +144,26 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             // handle get_sun_times calls
             const funcSun = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_sun_times');
             if (funcSun) {
-                const { lat, lon } = funcSun.arguments || {};
+                let lat, lon;
+                try {
+                    ({ lat, lon } = JSON.parse(funcSun.arguments || '{}'));
+                } catch (e) {
+                    log.warn(`[get_sun_times] Failed to parse arguments: ${funcSun.arguments}`);
+                }
                 log.debug(`[get_sun_times] called with lat=${lat}, lon=${lon}`);
+                if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+                    log.warn(`[get_sun_times] Invalid or missing lat/lon: lat=${lat}, lon=${lon}`);
+                    ws.send(JSON.stringify({
+                        type: 'conversation.item.create',
+                        item: {
+                            type: 'function_call_output',
+                            call_id: funcSun.call_id,
+                            output: JSON.stringify({ error: 'Missing or invalid lat/lon for get_sun_times' })
+                        }
+                    }));
+                    ws.send(JSON.stringify({ type: 'response.create' }));
+                    return;
+                }
                 weather.getSun(lat, lon)
                     .then(data => {
                         log.debug(`[get_sun_times] API result:`, data);
