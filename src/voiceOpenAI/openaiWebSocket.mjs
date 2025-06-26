@@ -94,8 +94,10 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             const funcWeather = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_weather');
             if (funcWeather) {
                 const { lat, lon } = funcWeather.arguments || {};
+                log.debug(`[get_weather] called with lat=${lat}, lon=${lon}`);
                 weather.getCurrent(lat, lon)
                     .then(data => {
+                        log.debug(`[get_weather] API result:`, data);
                         ws.send(JSON.stringify({
                             type: 'conversation.item.create',
                             item: {
@@ -108,6 +110,7 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
                     })
                     .catch(err => {
                         log.error('Error fetching weather:', err);
+                        log.debug(`[get_weather] failed with error:`, err);
                         ws.send(JSON.stringify({
                             type: 'conversation.item.create',
                             item: {
@@ -124,8 +127,10 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             const funcSun = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_sun_times');
             if (funcSun) {
                 const { lat, lon } = funcSun.arguments || {};
+                log.debug(`[get_sun_times] called with lat=${lat}, lon=${lon}`);
                 weather.getSun(lat, lon)
                     .then(data => {
+                        log.debug(`[get_sun_times] API result:`, data);
                         ws.send(JSON.stringify({
                             type: 'conversation.item.create',
                             item: {
@@ -138,6 +143,7 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
                     })
                     .catch(err => {
                         log.error('Error fetching sun times:', err);
+                        log.debug(`[get_sun_times] failed with error:`, err);
                         ws.send(JSON.stringify({
                             type: 'conversation.item.create',
                             item: {
