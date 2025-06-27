@@ -15,7 +15,7 @@ export function createAudioPlayback(filter, audioPlayer, log) {
     let ffmpegReady = false;
 
     function startFfmpeg() {
-        if (ffmpegProcess && playbackStream) return;
+        if (ffmpegProcess) return;
         playbackStream = new PassThrough();
         const ffmpegArgs = [
             '-f', 's16le',
@@ -40,40 +40,25 @@ export function createAudioPlayback(filter, audioPlayer, log) {
 
     function handleAudio(audioBuffer) {
         if (!audioPlayer) return;
-        // Always ensure ffmpeg/streams are ready before writing
-        if (!ffmpegReady || !playbackStream) {
-            startFfmpeg();
-        }
-        // Write any cached data first (if any)
-        if (pcmCache.length > 0 && playbackStream) {
-            while (pcmCache.length >= PCM_FRAME_SIZE_BYTES) {
-                const frame = pcmCache.slice(0, PCM_FRAME_SIZE_BYTES);
-                pcmCache = pcmCache.slice(PCM_FRAME_SIZE_BYTES);
-                playbackStream.write(frame);
-            }
-        }
-        // Now add the new buffer
+        if (!ffmpegReady) startFfmpeg();
         pcmCache = Buffer.concat([pcmCache, audioBuffer]);
-        while (pcmCache.length >= PCM_FRAME_SIZE_BYTES && playbackStream) {
+        while (pcmCache.length >= PCM_FRAME_SIZE_BYTES) {
             const frame = pcmCache.slice(0, PCM_FRAME_SIZE_BYTES);
             pcmCache = pcmCache.slice(PCM_FRAME_SIZE_BYTES);
             playbackStream.write(frame);
         }
-        if (audioPlayer.state.status !== 'playing' && resource) {
+        if (audioPlayer.state.status !== 'playing') {
             audioPlayer.play(resource);
         }
     }
 
     function reset() {
         pcmCache = Buffer.alloc(0);
+        // Optionally flush the stream
         if (playbackStream) playbackStream.end();
         playbackStream = undefined;
-        if (ffmpegProcess) ffmpegProcess.kill();
-        ffmpegProcess = undefined;
-        if (opusEncoder) opusEncoder.destroy();
-        opusEncoder = undefined;
-        resource = undefined;
         ffmpegReady = false;
+        // Do not kill ffmpegProcess here, keep it persistent for reuse
     }
 
     function cleanup() {
@@ -83,7 +68,6 @@ export function createAudioPlayback(filter, audioPlayer, log) {
         playbackStream = undefined;
         ffmpegProcess = undefined;
         opusEncoder = undefined;
-        resource = undefined;
         ffmpegReady = false;
         pcmCache = Buffer.alloc(0);
     }
