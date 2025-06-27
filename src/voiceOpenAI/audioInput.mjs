@@ -4,7 +4,7 @@ import ffmpegStatic from 'ffmpeg-static';
 import { spawn } from 'child_process';
 
 export function setupAudioInput({ voiceConnection, openAIWS, log }) {
-    const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
+    const userConverters = new Map(); // persistent per user
     const activeUsers = new Set();
     let endTimer;
     const DEBOUNCE_MS = 100;
@@ -23,7 +23,6 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
         });
         if (!userConverters.has(userId)) {
             const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 48000 });
-            opusStream.pipe(opusDecoder);
             const converter = spawn(ffmpegStatic, [
                 '-f', 's16le',
                 '-ar', '48000',
@@ -56,18 +55,21 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                 }
             });
             userConverters.set(userId, { opusDecoder, converter });
-            opusStream.once('end', () => {
-                log.info(`User ${userId} stopped speaking`);
-                activeUsers.delete(userId);
-                if (activeUsers.size === 0) {
-                    endTimer = setTimeout(() => {
-                        // retain converters for reuse; just clear pending batches
-                        activeUsers.clear();
-                        endTimer = null;
-                    }, DEBOUNCE_MS);
-                }
-            });
         }
+        // Always re-pipe the new opusStream to the persistent decoder
+        const { opusDecoder } = userConverters.get(userId);
+        opusStream.pipe(opusDecoder, { end: false });
+        opusStream.once('end', () => {
+            log.info(`User ${userId} stopped speaking`);
+            activeUsers.delete(userId);
+            if (activeUsers.size === 0) {
+                endTimer = setTimeout(() => {
+                    // retain converters for reuse; just clear pending batches
+                    activeUsers.clear();
+                    endTimer = null;
+                }, DEBOUNCE_MS);
+            }
+        });
     };
     voiceConnection.receiver.speaking.on('start', onSpeechStart);
 
@@ -75,9 +77,9 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
         for (const { converter, opusDecoder } of userConverters.values()) {
-            try { converter.stdin.end(); } catch {};
-            try { converter.kill(); } catch {};
-            try { opusDecoder.destroy(); } catch {};
+            try { converter.stdin.end(); } catch {}
+            try { converter.kill(); } catch {}
+            try { opusDecoder.destroy(); } catch {}
         }
         userConverters.clear();
         userCache.clear();
