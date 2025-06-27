@@ -3,40 +3,47 @@ import { setupVoiceConnection } from './voiceOpenAI/voiceConnection.mjs';
 import { createAudioPlayback } from './voiceOpenAI/audioPlayback.mjs';
 import { createOpenAIWebSocket } from './voiceOpenAI/openaiWebSocket.mjs';
 import { setupAudioInput } from './voiceOpenAI/audioInput.mjs';
-import { spawn } from 'child_process';
 import ffmpegStatic from 'ffmpeg-static';
+import { spawn } from 'child_process';
 
 export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, voice, filter, log }) {
     // Persistent ffmpeg processes
     const ffmpeg48to24 = spawn(ffmpegStatic, [
+        '-fflags', 'nobuffer',
+        '-flags', 'low_delay',
         '-f', 's16le',
         '-ar', '48000',
         '-ac', '1',
-        '-i', '-',
+        '-i', 'pipe:0',
         '-f', 's16le',
         '-ar', '24000',
         '-ac', '1',
         'pipe:1',
-    ]);
+    ], { stdio: ['pipe', 'pipe', 'inherit'] });
     ffmpeg48to24.on('error', log.error);
-    ffmpeg48to24.stderr.on('data', data => log.debug('[ffmpeg48to24]', data.toString()));
+    ffmpeg48to24.stderr?.on('data', data => log.debug('[ffmpeg48to24]', data.toString()));
 
+    // Persistent ffmpeg24to48: PCM24k -> raw Opus for Discord
     const ffmpeg24to48 = spawn(ffmpegStatic, [
+        '-fflags', 'nobuffer',
+        '-flags', 'low_delay',
         '-f', 's16le',
         '-ar', '24000',
         '-ac', '1',
-        '-i', '-',
-        '-f', 's16le',
-        '-ar', '48000',
-        '-ac', '1',
+        '-i', 'pipe:0',
+        '-c:a', 'libopus',
+        '-application', 'lowdelay',
+        '-frame_duration', '20',
+        '-b:a', '64000',
+        '-f', 'opus',
         'pipe:1',
-    ]);
+    ], { stdio: ['pipe', 'pipe', 'inherit'] });
     ffmpeg24to48.on('error', log.error);
-    ffmpeg24to48.stderr.on('data', data => log.debug('[ffmpeg24to48]', data.toString()));
+    ffmpeg24to48.stderr?.on('data', data => log.debug('[ffmpeg24to48]', data.toString()));
 
     const instructions = loadInstructions(log);
     const { voiceConnection, audioPlayer } = setupVoiceConnection({ client, guildId, voiceChannelId, log });
-    // Pass ffmpeg processes to handlers
+    // Pass ffmpeg24to48 to playback handler
     const playback = createAudioPlayback(filter, audioPlayer, log, ffmpeg24to48);
     let openAIWS;
     let audioInputCleanup;
