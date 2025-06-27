@@ -9,6 +9,9 @@ export function createAudioPlayback(audioPlayer, log, ffmpeg24to48) {
     let resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
 
     log.debug('Spawning persistent ffmpeg 24to48 process for playback');
+    ffmpeg24to48.stdout.on('data', (chunk) => {
+        log.debug(`[Playback] ffmpeg24to48.stdout emitted data, size: ${chunk.length}`);
+    });
     ffmpeg24to48.stdout.pipe(opusEncoder);
     audioPlayer.play(resource);
     audioPlayer.on(AudioPlayerStatus.Idle, () => {
