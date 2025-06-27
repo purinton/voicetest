@@ -19,7 +19,10 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     audioWorker.on('message', ({ userId, frames }) => {
         for (const frame of frames) {
             if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-                openAIWS.send(frame, { binary: true });
+                openAIWS.send(JSON.stringify({
+                    type: 'input_audio_buffer.append',
+                    audio: frame.toString('base64')
+                }));
             }
         }
     });
