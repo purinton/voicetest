@@ -28,7 +28,10 @@ export function createAudioPlayback(filter, audioPlayer, log, ffmpeg24to48) {
     }
 
     function reset() {
-        // Do NOT end playbackStream, just clear buffer and allow reuse
+        if (playbackStream) {
+            playbackStream.end();
+            playbackStream = undefined;
+        }
         pcmCache = Buffer.alloc(0);
     }
 
