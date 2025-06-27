@@ -1,6 +1,12 @@
 // Handles all function/tool message types for OpenAI WebSocket
 import fetch from 'node-fetch';
+import http from 'http';
+import https from 'https';
 import * as weather from '@purinton/openweathermap';
+
+// Keep-alive agents for HTTP(S) requests
+const httpAgent = new http.Agent({ keepAlive: true });
+const httpsAgent = new https.Agent({ keepAlive: true });
 
 export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
     // Helper to send function output
@@ -14,7 +20,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
     const funcChuck = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_chuck_norris_joke');
     if (funcChuck) {
         try {
-            const res = await fetch('https://api.chucknorris.io/jokes/random');
+            const res = await fetch('https://api.chucknorris.io/jokes/random', { agent: httpsAgent });
             const data = await res.json();
             sendOutput(funcChuck.call_id, { joke: data.value });
         } catch (err) {
@@ -38,7 +44,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
             return { handled: true, skipResponse: false };
         }
         try {
-            const data = await weather.getCurrent(lat, lon);
+            const data = await weather.getCurrent(lat, lon, { agent: httpsAgent });
             sendOutput(funcWeather.call_id, data);
         } catch (err) {
             log.error('Error fetching weather:', err);
@@ -56,7 +62,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
             return { handled: true, skipResponse: false };
         }
         try {
-            const data = await weather.get24hForecast(lat, lon);
+            const data = await weather.get24hForecast(lat, lon, { agent: httpsAgent });
             sendOutput(funcForecast.call_id, data);
         } catch (err) {
             log.error('Error fetching 24h forecast:', err);
@@ -74,7 +80,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
             return { handled: true, skipResponse: false };
         }
         try {
-            const data = await weather.getSun(lat, lon);
+            const data = await weather.getSun(lat, lon, { agent: httpsAgent });
             let result = { ...data };
             if (data) {
                 const toISO = ts => ts ? new Date(ts * 1000).toISOString() : null;

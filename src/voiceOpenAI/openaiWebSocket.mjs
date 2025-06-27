@@ -17,14 +17,17 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
         ws.send(JSON.stringify({ type: 'session.update', session: sessionConfig }));
     });
     ws.on('message', async (data) => {
+        // quick check for 'response' without full parse
+        const snippet = data.toString('utf8', 0, 50);
+        if (!snippet.includes('"response.')) return;
         let msg;
         try {
             msg = JSON.parse(data.toString());
             log.debug('[OpenAI WS message parsed]', msg.type);
         } catch {
-            msg = null;
+            return;
         }
-        if (msg && msg.type === 'response.done') {
+        if (msg.type === 'response.done') {
             const result = await handleFunctionCall({ msg, ws, log, sessionConfig });
             if (result && result.handled) {
                 if (result.restart && typeof onRestart === 'function') {

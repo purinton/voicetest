@@ -2,14 +2,27 @@ import WebSocket from 'ws';
 import prism from 'prism-media';
 import ffmpegStatic from 'ffmpeg-static';
 import { spawn } from 'child_process';
-
-const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
+import { Worker } from 'worker_threads';
+import path from 'path';
 
 export function setupAudioInput({ voiceConnection, openAIWS, log }) {
-    const userConverters = new Map();
+    const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
     const activeUsers = new Set();
     let endTimer;
     const DEBOUNCE_MS = 100;
+    const FRAME_BATCH_COUNT = 5;
+    const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
+    // spawn a worker to batch PCM chunks
+    const audioWorker = new Worker(path.resolve(process.cwd(), 'src/voiceOpenAI/audioWorker.mjs'), {
+        workerData: { FRAME_BATCH_COUNT, FRAME_SIZE_BYTES: PCM_FRAME_SIZE_BYTES_24 }
+    });
+    audioWorker.on('message', ({ userId, frames }) => {
+        for (const frame of frames) {
+            if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
+                openAIWS.send(frame, { binary: true });
+            }
+        }
+    });
 
     voiceConnection.receiver.speaking.on('start', (userId) => {
         activeUsers.add(userId);
@@ -34,19 +47,9 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             converter.on('error', log.error);
             converter.stderr.on('data', data => log.debug('discord ffmpeg stderr:', data.toString()));
             opusDecoder.pipe(converter.stdin);
-            let cache = Buffer.alloc(0);
             converter.stdout.on('data', chunk => {
-                cache = Buffer.concat([cache, chunk]);
-                while (cache.length >= PCM_FRAME_SIZE_BYTES_24) {
-                    const frame = cache.slice(0, PCM_FRAME_SIZE_BYTES_24);
-                    cache = cache.slice(PCM_FRAME_SIZE_BYTES_24);
-                    if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-                        openAIWS.send(JSON.stringify({
-                            type: 'input_audio_buffer.append',
-                            audio: frame.toString('base64'),
-                        }));
-                    }
-                }
+                // send raw PCM to worker for batching
+                audioWorker.postMessage({ userId, chunk });
             });
             userConverters.set(userId, { opusDecoder, converter });
             opusStream.once('end', () => {
@@ -54,10 +57,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                 activeUsers.delete(userId);
                 if (activeUsers.size === 0) {
                     endTimer = setTimeout(() => {
-                        for (const { converter } of userConverters.values()) {
-                            converter.stdin.end();
-                        }
-                        userConverters.clear();
+                        // retain converters for reuse; just clear pending batches
                         activeUsers.clear();
                         endTimer = null;
                     }, DEBOUNCE_MS);
