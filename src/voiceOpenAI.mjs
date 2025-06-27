@@ -29,7 +29,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
     ffmpeg24to48.stderr.on('data', data => log.debug('ffmpeg 24to48 stderr:', data.toString()));
 
     // Setup playback and input using shared ffmpeg processes
-    const playback = createAudioPlayback(audioPlayer, log, ffmpeg24to48);
+    const playback = createAudioPlayback(audioPlayer, log, ffmpeg24to48.stdin);
     let openAIWS;
     let audioInputCleanup;
 
@@ -57,7 +57,10 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
     });
     audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log, ffmpeg48to24 });
 
-    // No setInputStream/setOutputStream needed; playback handles piping
+    // Pipe OpenAI output to ffmpeg24to48
+    playback.setInputStream(ffmpeg24to48.stdin);
+    // Pipe ffmpeg24to48 output to Discord
+    playback.setOutputStream(ffmpeg24to48.stdout);
 
     return async () => {
         log.debug('Cleaning up Voice/OpenAI resources');
