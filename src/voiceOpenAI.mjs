@@ -37,6 +37,8 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
 
     return async () => {
         log.debug('Cleaning up Voice/OpenAI resources');
+        // cleanup persistent ffmpeg playback
+        if (playback.cleanup) playback.cleanup();
         if (openAIWS && openAIWS.readyState === 1) openAIWS.close();
         if (audioInputCleanup) audioInputCleanup();
         if (voiceConnection) {

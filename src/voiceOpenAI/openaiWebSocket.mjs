@@ -11,6 +11,8 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     const sessionConfig = getSessionConfig({ instructions, voice });
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
+    // Ensure cleanup of playback ffmpeg on ws close or restart
+    ws.on('close', () => log.info('OpenAI WebSocket closed'));
     ws.skipResponseCreate = new Set();
     ws.on('open', () => {
         log.info('Connected to OpenAI Realtime WebSocket');
@@ -44,9 +46,9 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
             handleAudioDelta({ msg, playback, log });
         } else if (msg && msg.type === 'response.audio.done') {
             handleAudioDone({ playback, log });
+            // on audio done, reset but keep ffmpeg alive
         }
     });
     ws.on('error', (err) => log.error('OpenAI WebSocket error:', err));
-    ws.on('close', () => log.info('OpenAI WebSocket closed'));
     return ws;
 }
