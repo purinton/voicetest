@@ -7,14 +7,10 @@ export function createAudioPlayback(audioPlayer, log, ffmpeg24to48) {
     let pcmCache = Buffer.alloc(0);
     let opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
     let resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
-    let isPiped = false;
 
-    // Pipe ffmpeg24to48's stdout to Opus encoder and Discord ONCE, immediately
+    log.debug('Spawning persistent ffmpeg 24to48 process for playback');
     ffmpeg24to48.stdout.pipe(opusEncoder);
     audioPlayer.play(resource);
-    isPiped = true;
-
-    // Optionally, auto-replay if stopped (for long-lived streams)
     audioPlayer.on(AudioPlayerStatus.Idle, () => {
         log.debug('AudioPlayer became idle, replaying resource');
         audioPlayer.play(resource);
@@ -22,10 +18,12 @@ export function createAudioPlayback(audioPlayer, log, ffmpeg24to48) {
 
     function handleAudio(audioBuffer) {
         if (!audioPlayer || !ffmpeg24to48) return;
+        log.debug(`[Playback] handleAudio called with buffer size: ${audioBuffer.length}`);
         pcmCache = Buffer.concat([pcmCache, audioBuffer]);
         while (pcmCache.length >= PCM_FRAME_SIZE_BYTES) {
             const frame = pcmCache.slice(0, PCM_FRAME_SIZE_BYTES);
             pcmCache = pcmCache.slice(PCM_FRAME_SIZE_BYTES);
+            log.debug(`[Playback] Writing frame to ffmpeg24to48.stdin, frame size: ${frame.length}, first bytes: ${frame.slice(0,8).toString('hex')}`);
             try {
                 ffmpeg24to48.stdin.write(frame);
             } catch (err) {
@@ -36,7 +34,6 @@ export function createAudioPlayback(audioPlayer, log, ffmpeg24to48) {
 
     function reset() {
         pcmCache = Buffer.alloc(0);
-        // No need to end the persistent stream
     }
 
     return { handleAudio, reset };
