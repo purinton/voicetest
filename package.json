@@ -41,7 +41,7 @@
         "@purinton/mcp-client": "^1.0.5",
         "@purinton/openweathermap": "^1.0.4",
         "dotenv": "^16.5.0",
-        "ffmpeg-static": "^5.2.0",
-        "node-fetch": "^3.3.2"
+        "node-fetch": "^3.3.2",
+        "sox.js": "^2.1.0"
     }
 }

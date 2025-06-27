@@ -1,7 +1,6 @@
 import { PassThrough } from 'stream';
-import { spawn } from 'child_process';
+import Sox from 'sox.js';
 import prism from 'prism-media';
-import ffmpegStatic from 'ffmpeg-static';
 import { createAudioResource, StreamType } from '@discordjs/voice';
 
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
@@ -9,31 +8,28 @@ const PCM_FRAME_SIZE_BYTES = 960 * 2;
 export function createAudioPlayback(filter, audioPlayer, log) {
     let pcmCache = Buffer.alloc(0);
     let playbackStream;
+    let sox;
+    let soxStream;
+    let opusEncoder;
 
     function handleAudio(audioBuffer) {
         if (!audioPlayer) return;
         pcmCache = Buffer.concat([pcmCache, audioBuffer]);
         if (!playbackStream) {
             playbackStream = new PassThrough();
-            const ffmpegArgs = [
-                '-f', 's16le',
-                '-ar', '24000',
-                '-ac', '1',
-                '-i', '-',
-                '-filter:a', filter,
-                '-f', 's16le',
-                '-ar', '48000',
-                '-ac', '1',
-                'pipe:1',
-            ];
-            const ffmpegProcess = spawn(ffmpegStatic, ffmpegArgs);
-            ffmpegProcess.on('error', log.error);
-            ffmpegProcess.stderr.on('data', data => log.debug('ffmpeg stderr:', data.toString()));
-            const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
-            playbackStream.pipe(ffmpegProcess.stdin);
-            ffmpegProcess.stdout.pipe(opusEncoder);
-            const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
-            audioPlayer.play(resource);
+            sox = new Sox();
+            sox.on('ready', () => {
+                soxStream = sox.transform({
+                    input: { rate: 24000, channels: 1, type: 'raw', encoding: 'signed-integer', bits: 16 },
+                    output: { rate: 48000, channels: 1, type: 'raw', encoding: 'signed-integer', bits: 16 },
+                    effects: filter ? [filter] : []
+                });
+                playbackStream.pipe(soxStream);
+                opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
+                soxStream.pipe(opusEncoder);
+                const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
+                audioPlayer.play(resource);
+            });
         }
         while (pcmCache.length >= PCM_FRAME_SIZE_BYTES) {
             const frame = pcmCache.slice(0, PCM_FRAME_SIZE_BYTES);
@@ -46,6 +42,10 @@ export function createAudioPlayback(filter, audioPlayer, log) {
         if (playbackStream) {
             playbackStream.end();
             playbackStream = undefined;
+        }
+        if (sox) {
+            try { sox.close && sox.close(); } catch {}
+            sox = undefined;
         }
         pcmCache = Buffer.alloc(0);
     }
