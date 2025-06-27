@@ -12,10 +12,7 @@ const version = packageJson.version;
 const presence = { activities: [{ name: `voicetest v${version}`, type: 4 }], status: 'online' };
 
 const voice = 'sage';
-// Sox-compatible filter: pitch shift up by 7 semitones (~150%) and tempo 110%
-// Sox pitch effect: 100 cents = 1 semitone, so 7 semitones = 700 cents
-const filter = '';
-//const filter = 'pitch 700 tempo 1.1';
+const filter = 'rubberband=pitch=1.5:tempo=1.1';
 
 await createDiscord({
     log,

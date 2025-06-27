@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import prism from 'prism-media';
-import Sox from 'sox.js';
+import ffmpegStatic from 'ffmpeg-static';
+import { spawn } from 'child_process';
 
 export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
@@ -8,6 +9,9 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     let endTimer;
     const DEBOUNCE_MS = 100;
     const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
+
+    // per-user PCM cache for slicing frames
+    const userCache = new Map();
 
     // handler for user speech start
     const onSpeechStart = (userId) => {
@@ -20,43 +24,44 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
         if (!userConverters.has(userId)) {
             const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 48000 });
             opusStream.pipe(opusDecoder);
-            // Setup sox.js resampler for 48kHz -> 24kHz
-            const sox = new Sox();
-            let soxReady = false;
-            let soxStream;
-            sox.on('ready', () => {
-                soxReady = true;
-                soxStream = sox.transform({
-                    input: { rate: 48000, channels: 1, type: 'raw', encoding: 'signed-integer', bits: 16 },
-                    output: { rate: 24000, channels: 1, type: 'raw', encoding: 'signed-integer', bits: 16 },
-                    effects: []
-                });
-                opusDecoder.pipe(soxStream);
-                let cache = Buffer.alloc(0);
-                soxStream.on('data', chunk => {
-                    cache = Buffer.concat([cache, chunk]);
-                    while (cache.length >= PCM_FRAME_SIZE_BYTES_24) {
-                        const frame = cache.slice(0, PCM_FRAME_SIZE_BYTES_24);
-                        cache = cache.slice(PCM_FRAME_SIZE_BYTES_24);
-                        if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-                            const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
-                            try {
-                                openAIWS.send(payload);
-                            } catch (err) {
-                                log.error('Error sending audio to OpenAI WS:', err);
-                            }
-                        } else {
-                            log.warn('OpenAI WS not open, skipping audio frame');
+            const converter = spawn(ffmpegStatic, [
+                '-f', 's16le',
+                '-ar', '48000',
+                '-ac', '1',
+                '-i', '-',
+                '-f', 's16le',
+                '-ar', '24000',
+                '-ac', '1',
+                'pipe:1',
+            ]);
+            converter.on('error', log.error);
+            converter.stderr.on('data', data => log.debug('discord ffmpeg stderr:', data.toString()));
+            opusDecoder.pipe(converter.stdin);
+            let cache = Buffer.alloc(0);
+            converter.stdout.on('data', chunk => {
+                cache = Buffer.concat([cache, chunk]);
+                while (cache.length >= PCM_FRAME_SIZE_BYTES_24) {
+                    const frame = cache.slice(0, PCM_FRAME_SIZE_BYTES_24);
+                    cache = cache.slice(PCM_FRAME_SIZE_BYTES_24);
+                    if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
+                        const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
+                        try {
+                            openAIWS.send(payload);
+                        } catch (err) {
+                            log.error('Error sending audio to OpenAI WS:', err);
                         }
+                    } else {
+                        log.warn('OpenAI WS not open, skipping audio frame');
                     }
-                });
+                }
             });
-            userConverters.set(userId, { opusDecoder, sox, soxStream });
+            userConverters.set(userId, { opusDecoder, converter });
             opusStream.once('end', () => {
                 log.info(`User ${userId} stopped speaking`);
                 activeUsers.delete(userId);
                 if (activeUsers.size === 0) {
                     endTimer = setTimeout(() => {
+                        // retain converters for reuse; just clear pending batches
                         activeUsers.clear();
                         endTimer = null;
                     }, DEBOUNCE_MS);
@@ -69,11 +74,13 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     // Return a cleanup function to remove listeners and destroy converters
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
-        for (const { sox, opusDecoder } of userConverters.values()) {
-            try { sox && sox.close && sox.close(); } catch {};
+        for (const { converter, opusDecoder } of userConverters.values()) {
+            try { converter.stdin.end(); } catch {};
+            try { converter.kill(); } catch {};
             try { opusDecoder.destroy(); } catch {};
         }
         userConverters.clear();
+        userCache.clear();
         activeUsers.clear();
         if (endTimer) { clearTimeout(endTimer); endTimer = null; }
         log.info('Cleaned up audio input handlers and converters');
