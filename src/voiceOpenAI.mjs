@@ -3,41 +3,11 @@ import { setupVoiceConnection } from './voiceOpenAI/voiceConnection.mjs';
 import { createAudioPlayback } from './voiceOpenAI/audioPlayback.mjs';
 import { createOpenAIWebSocket } from './voiceOpenAI/openaiWebSocket.mjs';
 import { setupAudioInput } from './voiceOpenAI/audioInput.mjs';
-import { spawn } from 'child_process';
-import ffmpegStatic from 'ffmpeg-static';
 
 export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, voice, filter, log }) {
-    // Persistent ffmpeg processes
-    const ffmpeg48to24 = spawn(ffmpegStatic, [
-        '-f', 's16le',
-        '-ar', '48000',
-        '-ac', '1',
-        '-i', '-',
-        '-f', 's16le',
-        '-ar', '24000',
-        '-ac', '1',
-        'pipe:1',
-    ]);
-    ffmpeg48to24.on('error', log.error);
-    ffmpeg48to24.stderr.on('data', data => log.debug('[ffmpeg48to24]', data.toString()));
-
-    const ffmpeg24to48 = spawn(ffmpegStatic, [
-        '-f', 's16le',
-        '-ar', '24000',
-        '-ac', '1',
-        '-i', '-',
-        '-f', 's16le',
-        '-ar', '48000',
-        '-ac', '1',
-        'pipe:1',
-    ]);
-    ffmpeg24to48.on('error', log.error);
-    ffmpeg24to48.stderr.on('data', data => log.debug('[ffmpeg24to48]', data.toString()));
-
     const instructions = loadInstructions(log);
     const { voiceConnection, audioPlayer } = setupVoiceConnection({ client, guildId, voiceChannelId, log });
-    // Pass ffmpeg processes to handlers
-    const playback = createAudioPlayback(filter, audioPlayer, log, ffmpeg24to48);
+    const playback = createAudioPlayback(filter, audioPlayer, log);
     let openAIWS;
     let audioInputCleanup;
 
@@ -52,7 +22,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
             playback,
             onRestart: restartWebSocket
         });
-        audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log, ffmpeg48to24 });
+        audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
     }
 
     openAIWS = createOpenAIWebSocket({
@@ -63,7 +33,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         playback,
         onRestart: restartWebSocket
     });
-    audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log, ffmpeg48to24 });
+    audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
 
     return async () => {
         log.debug('Cleaning up Voice/OpenAI resources');
@@ -75,8 +45,5 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         if (audioPlayer) {
             try { audioPlayer.stop(); } catch (e) { log.error('Error stopping audio player:', e); }
         }
-        // Only clean up ffmpeg processes here
-        try { ffmpeg48to24.stdin.end(); ffmpeg48to24.kill(); } catch (e) { log.error('Error killing ffmpeg48to24:', e); }
-        try { ffmpeg24to48.stdin.end(); ffmpeg24to48.kill(); } catch (e) { log.error('Error killing ffmpeg24to48:', e); }
     };
 }
