@@ -17,7 +17,7 @@ export function createAudioPlayback(filter, audioPlayer, log) {
         pcmCache = Buffer.concat([pcmCache, audioBuffer]);
         if (!playbackStream) {
             playbackStream = new PassThrough();
-            sox = new Sox();
+            sox = new Sox({});
             sox.on('ready', () => {
                 soxStream = sox.transform({
                     input: { rate: 24000, channels: 1, type: 'raw', encoding: 'signed-integer', bits: 16 },
