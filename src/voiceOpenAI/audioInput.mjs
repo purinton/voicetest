@@ -44,7 +44,6 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                     cache = cache.slice(PCM_FRAME_SIZE_BYTES_24);
                     if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
                         const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
-                        log.debug(`[OpenAI audio send] frame size ${frame.length} bytes`);
                         try {
                             openAIWS.send(payload);
                         } catch (err) {
