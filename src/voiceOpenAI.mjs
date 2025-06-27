@@ -1,3 +1,4 @@
+import ffmpegStatic from 'ffmpeg-static';
 import { PassThrough } from 'stream';
 import { spawn } from 'child_process';
 import { loadInstructions } from './voiceOpenAI/instructions.mjs';
