@@ -10,6 +10,7 @@ const httpsAgent = new https.Agent({ keepAlive: true });
 
 export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
     // Helper to send function output
+    log.debug('function_call_output', { call_id, output: JSON.stringify(output) });
     const sendOutput = (call_id, output) => {
         ws.send(JSON.stringify({
             type: 'conversation.item.create',
@@ -44,7 +45,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
     const funcWeather = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_weather');
     if (funcWeather) {
         let lat, lon;
-        try { ({ lat, lon } = JSON.parse(funcWeather.arguments || '{}')); } catch {}
+        try { ({ lat, lon } = JSON.parse(funcWeather.arguments || '{}')); } catch { }
         if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
             sendOutput(funcWeather.call_id, { error: 'Missing or invalid lat/lon for get_weather' });
             return { handled: true, skipResponse: false };
@@ -62,7 +63,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
     const funcForecast = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_24h_forecast');
     if (funcForecast) {
         let lat, lon;
-        try { ({ lat, lon } = JSON.parse(funcForecast.arguments || '{}')); } catch {}
+        try { ({ lat, lon } = JSON.parse(funcForecast.arguments || '{}')); } catch { }
         if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
             sendOutput(funcForecast.call_id, { error: 'Missing or invalid lat/lon for get_24h_forecast' });
             return { handled: true, skipResponse: false };
@@ -80,7 +81,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
     const funcSun = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_sun_times');
     if (funcSun) {
         let lat, lon;
-        try { ({ lat, lon } = JSON.parse(funcSun.arguments || '{}')); } catch {}
+        try { ({ lat, lon } = JSON.parse(funcSun.arguments || '{}')); } catch { }
         if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
             sendOutput(funcSun.call_id, { error: 'Missing or invalid lat/lon for get_sun_times' });
             return { handled: true, skipResponse: false };
@@ -114,7 +115,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
         const absOffset = Math.abs(tzOffset);
         const offsetHours = pad(Math.floor(absOffset / 60));
         const offsetMinutes = pad(absOffset % 60);
-        const localIsoWithOffset = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${sign}${offsetHours}:${offsetMinutes}`;
+        const localIsoWithOffset = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${sign}${offsetHours}:${offsetMinutes}`;
         const result = {
             utc,
             local,
