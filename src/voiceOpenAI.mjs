@@ -21,7 +21,10 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
 
     // Persistent ffmpeg: 24kHz -> 48kHz (output to Discord)
     const ffmpeg24to48 = spawn(ffmpegStatic, [
-        '-f', 's16le', '-ar', '24000', '-ac', '1', '-i', '-',
+        '-f', 's16le', '-ar', '24000', '-ac', '1', '-probesize', '32', '-analyzeduration', '0', '-i', '-',
+        '-fflags', 'nobuffer',
+        '-re',
+        '-filter:a', filter,
         '-f', 's16le', '-ar', '48000', '-ac', '1', 'pipe:1',
     ]);
     ffmpeg24to48.on('error', log.error);
