@@ -13,7 +13,8 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     // per-user PCM cache for slicing frames
     const userCache = new Map();
 
-    voiceConnection.receiver.speaking.on('start', (userId) => {
+    // handler for user speech start
+    const onSpeechStart = (userId) => {
         activeUsers.add(userId);
         if (endTimer) { clearTimeout(endTimer); endTimer = null; }
         log.info(`User ${userId} started speaking`);
@@ -67,5 +68,21 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                 }
             });
         }
-    });
+    };
+    voiceConnection.receiver.speaking.on('start', onSpeechStart);
+
+    // Return a cleanup function to remove listeners and destroy converters
+    return () => {
+        voiceConnection.receiver.speaking.off('start', onSpeechStart);
+        for (const { converter, opusDecoder } of userConverters.values()) {
+            try { converter.stdin.end(); } catch {};
+            try { converter.kill(); } catch {};
+            try { opusDecoder.destroy(); } catch {};
+        }
+        userConverters.clear();
+        userCache.clear();
+        activeUsers.clear();
+        if (endTimer) { clearTimeout(endTimer); endTimer = null; }
+        log.info('Cleaned up audio input handlers and converters');
+    };
 }
