@@ -9,9 +9,15 @@ const httpAgent = new http.Agent({ keepAlive: true });
 const httpsAgent = new https.Agent({ keepAlive: true });
 
 export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
+    // Log any function calls issued by the AI along with their arguments
+    if (msg.response && Array.isArray(msg.response.output)) {
+        msg.response.output
+            .filter(item => item.type === 'function_call')
+            .forEach(fc => log.info(`AI invoked function '${fc.name}' with arguments:`, fc.arguments));
+    }
     // Helper to send function output
-    log.debug('function_call_output', { call_id, output: JSON.stringify(output) });
     const sendOutput = (call_id, output) => {
+        log.debug('function_call_output', { call_id, output: JSON.stringify(output) });
         ws.send(JSON.stringify({
             type: 'conversation.item.create',
             item: { type: 'function_call_output', call_id, output: JSON.stringify(output) }
