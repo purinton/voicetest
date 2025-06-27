@@ -21,7 +21,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
 
     // Persistent ffmpeg: 24kHz -> 48kHz (output to Discord)
     const ffmpeg24to48 = spawn(ffmpegStatic, [
-        '-f', 's16le', '-ar', '24000', '-ac', '1', '-probesize', '32', '-analyzeduration', '0', '-i', '-',
+        '-f', 's16le', '-ar', '24000', '-ac', '1', '-i', '-',
         '-fflags', 'nobuffer',
         '-re',
         '-filter:a', filter,
@@ -29,14 +29,6 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
     ]);
     ffmpeg24to48.on('error', log.error);
     ffmpeg24to48.stderr.on('data', data => log.debug('ffmpeg 24to48 stderr:', data.toString()));
-    // Write a short silence buffer to ffmpeg24to48 to kickstart output
-    try {
-        const silence = Buffer.alloc(1920 * 5, 0); // 5 frames of silence
-        ffmpeg24to48.stdin.write(silence);
-        log.debug('Wrote initial silence to ffmpeg24to48.stdin');
-    } catch (e) {
-        log.error('Error writing initial silence to ffmpeg24to48:', e);
-    }
 
     // Setup playback and input using shared ffmpeg processes
     const playback = createAudioPlayback(audioPlayer, log, ffmpeg24to48);
