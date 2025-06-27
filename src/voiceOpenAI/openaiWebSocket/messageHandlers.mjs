@@ -41,10 +41,10 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig }) {
         log.info('Received clear_conversation, requesting websocket restart');
         return { handled: true, skipResponse: true, restart: true };
     }
-    // no_response_needed: do nothing and skip sending a response
-    const funcNoResp = msg.response.output.find(item => item.type === 'function_call' && item.name === 'no_response_needed');
+    // no_response: do nothing and skip sending a response
+    const funcNoResp = msg.response.output.find(item => item.type === 'function_call' && item.name === 'no_response');
     if (funcNoResp) {
-        log.info('Received no_response_needed, skipping response');
+        log.info('Received no_response, skipping response');
         return { handled: true, skipResponse: true };
     }
     // get_weather
