@@ -21,7 +21,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 48000 });
             opusStream.pipe(opusDecoder);
             // Setup sox.js resampler for 48kHz -> 24kHz
-            const sox = new Sox({});
+            const sox = new Sox();
             let soxReady = false;
             let soxStream;
             sox.on('ready', () => {
