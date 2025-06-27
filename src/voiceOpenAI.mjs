@@ -23,7 +23,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
     ffmpeg48to24.on('error', log.error);
     ffmpeg48to24.stderr?.on('data', data => log.debug('[ffmpeg48to24]', data.toString()));
 
-    // Persistent ffmpeg24to48: PCM24k -> raw Opus for Discord
+    // Persistent ffmpeg24to48: PCM24k -> PCM48k for Discord
     const ffmpeg24to48 = spawn(ffmpegStatic, [
         '-fflags', 'nobuffer',
         '-flags', 'low_delay',
@@ -31,11 +31,9 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         '-ar', '24000',
         '-ac', '1',
         '-i', 'pipe:0',
-        '-c:a', 'libopus',
-        '-application', 'lowdelay',
-        '-frame_duration', '20',
-        '-b:a', '64000',
-        '-f', 'opus',
+        '-f', 's16le',
+        '-ar', '48000',
+        '-ac', '1',
         'pipe:1',
     ], { stdio: ['pipe', 'pipe', 'inherit'] });
     ffmpeg24to48.on('error', log.error);
