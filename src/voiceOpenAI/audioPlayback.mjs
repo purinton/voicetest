@@ -1,12 +1,8 @@
 import { PassThrough } from 'stream';
-import { spawn } from 'child_process';
 import prism from 'prism-media';
-import ffmpegStatic from 'ffmpeg-static';
 import { createAudioResource, StreamType } from '@discordjs/voice';
 
-const PCM_FRAME_SIZE_BYTES = 960 * 2;
-
-export function createAudioPlayback(filter, audioPlayer, log) {
+export function createAudioPlayback(filter, audioPlayer, log, ffmpeg24to48) {
     let pcmCache = Buffer.alloc(0);
     let playbackStream;
 
@@ -15,29 +11,18 @@ export function createAudioPlayback(filter, audioPlayer, log) {
         pcmCache = Buffer.concat([pcmCache, audioBuffer]);
         if (!playbackStream) {
             playbackStream = new PassThrough();
-            const ffmpegArgs = [
-                '-f', 's16le',
-                '-ar', '24000',
-                '-ac', '1',
-                '-i', '-',
-                '-filter:a', filter,
-                '-f', 's16le',
-                '-ar', '48000',
-                '-ac', '1',
-                'pipe:1',
-            ];
-            const ffmpegProcess = spawn(ffmpegStatic, ffmpegArgs);
-            ffmpegProcess.on('error', log.error);
-            ffmpegProcess.stderr.on('data', data => log.debug('ffmpeg stderr:', data.toString()));
+            // Pipe playbackStream to persistent ffmpeg24to48
+            playbackStream.pipe(ffmpeg24to48.stdin);
+            // ffmpeg24to48 output to Opus encoder
             const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
-            playbackStream.pipe(ffmpegProcess.stdin);
-            ffmpegProcess.stdout.pipe(opusEncoder);
+            ffmpeg24to48.stdout.pipe(opusEncoder);
             const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
             audioPlayer.play(resource);
         }
-        while (pcmCache.length >= PCM_FRAME_SIZE_BYTES) {
-            const frame = pcmCache.slice(0, PCM_FRAME_SIZE_BYTES);
-            pcmCache = pcmCache.slice(PCM_FRAME_SIZE_BYTES);
+        const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
+        while (pcmCache.length >= PCM_FRAME_SIZE_BYTES_24) {
+            const frame = pcmCache.slice(0, PCM_FRAME_SIZE_BYTES_24);
+            pcmCache = pcmCache.slice(PCM_FRAME_SIZE_BYTES_24);
             playbackStream.write(frame);
         }
     }
