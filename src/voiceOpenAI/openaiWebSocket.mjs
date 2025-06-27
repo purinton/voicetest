@@ -34,7 +34,9 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
                     onRestart();
                     return;
                 }
-                ws.send(JSON.stringify({ type: 'response.create' }));
+                if (!result.skipResponse) {
+                    ws.send(JSON.stringify({ type: 'response.create' }));
+                }
                 return;
             }
         }
