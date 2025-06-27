@@ -9,6 +9,6 @@ export function handleAudioDelta({ msg, playback, log }) {
 }
 
 export function handleAudioDone({ playback, log }) {
-    log.info('OpenAI audio stream done, playing buffered response');
-    playback.handleAudio(Buffer.alloc(0), true);
+    log.info('OpenAI audio stream done, resetting playback');
+    playback.reset();
 }
