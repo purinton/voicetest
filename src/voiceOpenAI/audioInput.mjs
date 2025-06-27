@@ -1,17 +1,12 @@
 import WebSocket from 'ws';
 import prism from 'prism-media';
-import ffmpegStatic from 'ffmpeg-static';
-import { spawn } from 'child_process';
 
-export function setupAudioInput({ voiceConnection, openAIWS, log }) {
-    const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
-    const activeUsers = new Set();
+export function setupAudioInput({ voiceConnection, openAIWS, log, ffmpeg48to24 }) {
+    const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
+    const userDecoders = new Map();
     let endTimer;
     const DEBOUNCE_MS = 100;
-    const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
-
-    // per-user PCM cache for slicing frames
-    const userCache = new Map();
+    const activeUsers = new Set();
 
     // handler for user speech start
     const onSpeechStart = (userId) => {
@@ -21,47 +16,23 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 100 },
         });
-        if (!userConverters.has(userId)) {
+        if (!userDecoders.has(userId)) {
             const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 48000 });
             opusStream.pipe(opusDecoder);
-            const converter = spawn(ffmpegStatic, [
-                '-f', 's16le',
-                '-ar', '48000',
-                '-ac', '1',
-                '-i', '-',
-                '-f', 's16le',
-                '-ar', '24000',
-                '-ac', '1',
-                'pipe:1',
-            ]);
-            converter.on('error', log.error);
-            converter.stderr.on('data', data => log.debug('discord ffmpeg stderr:', data.toString()));
-            opusDecoder.pipe(converter.stdin);
-            let cache = Buffer.alloc(0);
-            converter.stdout.on('data', chunk => {
-                cache = Buffer.concat([cache, chunk]);
-                while (cache.length >= PCM_FRAME_SIZE_BYTES_24) {
-                    const frame = cache.slice(0, PCM_FRAME_SIZE_BYTES_24);
-                    cache = cache.slice(PCM_FRAME_SIZE_BYTES_24);
-                    if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-                        const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
-                        try {
-                            openAIWS.send(payload);
-                        } catch (err) {
-                            log.error('Error sending audio to OpenAI WS:', err);
-                        }
-                    } else {
-                        log.warn('OpenAI WS not open, skipping audio frame');
-                    }
+            opusDecoder.on('data', chunk => {
+                // Write all decoded PCM to the shared ffmpeg stdin
+                try {
+                    ffmpeg48to24.stdin.write(chunk);
+                } catch (err) {
+                    log.error('Error writing to ffmpeg48to24:', err);
                 }
             });
-            userConverters.set(userId, { opusDecoder, converter });
+            userDecoders.set(userId, opusDecoder);
             opusStream.once('end', () => {
                 log.info(`User ${userId} stopped speaking`);
                 activeUsers.delete(userId);
                 if (activeUsers.size === 0) {
                     endTimer = setTimeout(() => {
-                        // retain converters for reuse; just clear pending batches
                         activeUsers.clear();
                         endTimer = null;
                     }, DEBOUNCE_MS);
@@ -71,18 +42,35 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     };
     voiceConnection.receiver.speaking.on('start', onSpeechStart);
 
-    // Return a cleanup function to remove listeners and destroy converters
+    // Listen to ffmpeg48to24 stdout and send to OpenAI
+    let cache = Buffer.alloc(0);
+    ffmpeg48to24.stdout.on('data', chunk => {
+        cache = Buffer.concat([cache, chunk]);
+        while (cache.length >= PCM_FRAME_SIZE_BYTES_24) {
+            const frame = cache.slice(0, PCM_FRAME_SIZE_BYTES_24);
+            cache = cache.slice(PCM_FRAME_SIZE_BYTES_24);
+            if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
+                const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
+                try {
+                    openAIWS.send(payload);
+                } catch (err) {
+                    log.error('Error sending audio to OpenAI WS:', err);
+                }
+            } else {
+                log.warn('OpenAI WS not open, skipping audio frame');
+            }
+        }
+    });
+
+    // Return a cleanup function to remove listeners and destroy decoders
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
-        for (const { converter, opusDecoder } of userConverters.values()) {
-            try { converter.stdin.end(); } catch {};
-            try { converter.kill(); } catch {};
+        for (const opusDecoder of userDecoders.values()) {
             try { opusDecoder.destroy(); } catch {};
         }
-        userConverters.clear();
-        userCache.clear();
+        userDecoders.clear();
         activeUsers.clear();
         if (endTimer) { clearTimeout(endTimer); endTimer = null; }
-        log.info('Cleaned up audio input handlers and converters');
+        log.info('Cleaned up audio input handlers and decoders');
     };
 }
