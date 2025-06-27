@@ -9,6 +9,8 @@ const PCM_FRAME_SIZE_BYTES = 960 * 2;
 export function createAudioPlayback(filter, audioPlayer, log) {
     let pcmCache = Buffer.alloc(0);
     let playbackStream;
+    let ffmpegProcess;
+    let opusEncoder;
 
     function handleAudio(audioBuffer) {
         if (!audioPlayer) return;
@@ -26,10 +28,10 @@ export function createAudioPlayback(filter, audioPlayer, log) {
                 '-ac', '1',
                 'pipe:1',
             ];
-            const ffmpegProcess = spawn(ffmpegStatic, ffmpegArgs);
+            ffmpegProcess = spawn(ffmpegStatic, ffmpegArgs);
             ffmpegProcess.on('error', log.error);
             ffmpegProcess.stderr.on('data', data => log.debug('ffmpeg stderr:', data.toString()));
-            const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
+            opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
             playbackStream.pipe(ffmpegProcess.stdin);
             ffmpegProcess.stdout.pipe(opusEncoder);
             const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
@@ -43,9 +45,18 @@ export function createAudioPlayback(filter, audioPlayer, log) {
     }
 
     function reset() {
+        // end and destroy existing streams and processes
         if (playbackStream) {
             playbackStream.end();
             playbackStream = undefined;
+        }
+        if (ffmpegProcess) {
+            try { ffmpegProcess.kill(); } catch (e) { log.error('Error killing ffmpeg process:', e); }
+            ffmpegProcess = undefined;
+        }
+        if (opusEncoder) {
+            try { opusEncoder.destroy(); } catch (e) { log.error('Error destroying opus encoder:', e); }
+            opusEncoder = undefined;
         }
         pcmCache = Buffer.alloc(0);
     }
