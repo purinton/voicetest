@@ -18,7 +18,7 @@ export function getSessionConfig({ instructions, voice }) {
             {
                 type: 'function',
                 name: 'no_response',
-                description: 'Call this if no response is needed or necessary, if you wish to remain silent and say nothing, or to break out of a loop.',
+                description: 'Call this if no response is needed or necessary, if you wish to remain silent and say nothing, or to break out of a loop. Do not call this repeatedly.',
                 parameters: { type: 'object', properties: {}, required: [] }
             },
             {
