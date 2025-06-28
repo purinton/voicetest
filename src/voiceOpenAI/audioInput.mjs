@@ -22,7 +22,7 @@ async function sendUserSpeakingMessage({ userId, openAIWS, log, client }) {
         log.warn(`Could not fetch Discord user info for ${userId}:`, e);
     }
     if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-        const text = `${username} is speaking next:`;
+        const text = `User <@${userId}> discord username: ${username}, discord nickname: ${nickname || '(none)'} is speaking`;
         const payload = {
             event_id: `event_${Date.now()}`,
             type: 'conversation.item.create',
