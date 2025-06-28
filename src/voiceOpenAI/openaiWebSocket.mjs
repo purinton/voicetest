@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import { getSessionConfig } from './openaiWebSocket/sessionConfig.mjs';
 import { handleFunctionCall } from './openaiWebSocket/messageHandlers.mjs';
 import { handleAudioDelta, handleAudioDone } from './openaiWebSocket/audioHandlers.mjs';
+import { playBeep } from './beep.mjs';
 
 /**
  * Creates a WebSocket connection to the OpenAI realtime API.
@@ -14,7 +15,8 @@ export async function createOpenAIWebSocket({ client,
     log,
     playback,
     onRestart,
-    channelId = process.env.VOICE_CHANNEL_ID || null
+    channelId = process.env.VOICE_CHANNEL_ID || null,
+    audioPlayer
 }) {
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     const sessionConfig = getSessionConfig({ instructions, voice });
@@ -89,7 +91,7 @@ export async function createOpenAIWebSocket({ client,
             }
         }
         if (msg.type === 'response.done') {
-            const result = await handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId });
+            const result = await handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId, playBeepFn: () => playBeep(audioPlayer, log) });
             if (result && result.handled) {
                 if (result.restart && typeof onRestart === 'function') {
                     log.info('Restarting OpenAI WebSocket session...');

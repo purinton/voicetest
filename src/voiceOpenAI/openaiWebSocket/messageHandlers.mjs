@@ -3,14 +3,19 @@ import fetch from 'node-fetch';
 import http from 'http';
 import https from 'https';
 import * as weather from '@purinton/openweathermap';
+import { playBeep } from '../beep.mjs';
 
 // Keep-alive agents for HTTP(S) requests
 const httpAgent = new http.Agent({ keepAlive: true });
 const httpsAgent = new https.Agent({ keepAlive: true });
 
-export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId }) {
-    // Log any function calls issued by the AI along with their arguments
+export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId, playBeepFn }) {
+    // Play beep if any function_call is present
     if (msg.response && Array.isArray(msg.response.output)) {
+        const hasFunctionCall = msg.response.output.some(item => item.type === 'function_call');
+        if (hasFunctionCall && typeof playBeepFn === 'function') {
+            await playBeepFn();
+        }
         msg.response.output
             .filter(item => item.type === 'function_call')
             .forEach(async fc => {
