@@ -37,12 +37,17 @@ export async function createOpenAIWebSocket({ client,
         // Send user transcription to Discord if present
         if (msg && msg.type === 'conversation.item.input_audio_transcription.completed' && msg.transcript && channelId && client) {
             try {
+                const channel = await client.channels.fetch(channelId);
                 if (channel && channel.send) {
                     await channel.send(`User: ${msg.transcript}`);
                 }
             } catch (err) {
                 log.error('Failed to send user transcription to Discord channel:', err);
             }
+        }
+        // Debug: log assistant response structure
+        if (msg && msg.type === 'response.done' && msg.response) {
+            log.debug('[Assistant response structure]', JSON.stringify(msg.response.output));
         }
         // Send assistant response text to Discord if present
         if (msg && msg.type === 'response.done' && msg.response && Array.isArray(msg.response.output) && channelId && client) {
@@ -51,14 +56,19 @@ export async function createOpenAIWebSocket({ client,
                     for (const part of item.content) {
                         if (part.type === 'text' && part.text) {
                             try {
+                                const channel = await client.channels.fetch(channelId);
                                 if (channel && channel.send) {
                                     await channel.send(`Assistant: ${part.text}`);
                                 }
                             } catch (err) {
                                 log.error('Failed to send assistant response to Discord channel:', err);
                             }
+                        } else {
+                            log.debug('[Assistant content part]', JSON.stringify(part));
                         }
                     }
+                } else {
+                    log.debug('[Assistant output item]', JSON.stringify(item));
                 }
             }
         }
