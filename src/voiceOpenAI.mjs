@@ -25,7 +25,8 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
     }
 
-    openAIWS = createOpenAIWebSocket({
+    openAIWS = await createOpenAIWebSocket({
+        client,
         openAIApiKey,
         instructions,
         voice,

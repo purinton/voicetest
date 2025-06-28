@@ -7,7 +7,16 @@ import { handleAudioDelta, handleAudioDone } from './openaiWebSocket/audioHandle
  * Creates a WebSocket connection to the OpenAI realtime API.
  * Accepts an optional onRestart callback to handle session restarts.
  */
-export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, playback, onRestart }) {
+export async function createOpenAIWebSocket({ client,
+    openAIApiKey,
+    instructions,
+    voice,
+    log,
+    playback,
+    onRestart,
+    channelId = process.env.VOICE_CHANNEL_ID || null
+}) {
+    const channel = await client.channels.fetch(channelId);
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     const sessionConfig = getSessionConfig({ instructions, voice });
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
@@ -24,6 +33,34 @@ export function createOpenAIWebSocket({ openAIApiKey, instructions, voice, log, 
         } catch (e) {
             log.debug('Failed to parse WS message', e);
             return;
+        }
+        // Send user transcription to Discord if present
+        if (msg && msg.type === 'conversation.item.input_audio_transcription.completed' && msg.transcript && channelId && client) {
+            try {
+                if (channel && channel.send) {
+                    await channel.send(`User: ${msg.transcript}`);
+                }
+            } catch (err) {
+                log.error('Failed to send user transcription to Discord channel:', err);
+            }
+        }
+        // Send assistant response text to Discord if present
+        if (msg && msg.type === 'response.done' && msg.response && Array.isArray(msg.response.output) && channelId && client) {
+            for (const item of msg.response.output) {
+                if (item.type === 'message' && Array.isArray(item.content)) {
+                    for (const part of item.content) {
+                        if (part.type === 'text' && part.text) {
+                            try {
+                                if (channel && channel.send) {
+                                    await channel.send(`Assistant: ${part.text}`);
+                                }
+                            } catch (err) {
+                                log.error('Failed to send assistant response to Discord channel:', err);
+                            }
+                        }
+                    }
+                }
+            }
         }
         if (msg.type === 'response.done') {
             const result = await handleFunctionCall({ msg, ws, log, sessionConfig });
