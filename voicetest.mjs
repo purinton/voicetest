@@ -16,6 +16,7 @@ const voice = 'ash';
 const filter = 'rubberband=pitch=0.95:tempo=1.05';
 
 const mcp = mcpClient({ log });
+registerSignals({ log, shutdownHook: () => mcp.close() });
 const tools = await mcp.listTools();
 log.debug('list-tools', { tools });
 
