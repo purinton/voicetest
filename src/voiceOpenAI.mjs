@@ -7,7 +7,7 @@ import { setupAudioInput } from './voiceOpenAI/audioInput.mjs';
 export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, voice, filter, log }) {
     const instructions = loadInstructions(log);
     const { voiceConnection, audioPlayer } = setupVoiceConnection({ client, guildId, voiceChannelId, log });
-    const playback = createAudioPlayback(filter, audioPlayer, log, voiceConnection);
+    const playback = createAudioPlayback(filter, audioPlayer, log);
     let openAIWS;
     let audioInputCleanup;
 
