@@ -11,10 +11,10 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
     let openAIWS;
     let audioInputCleanup;
 
-    function restartWebSocket() {
+    async function restartWebSocket() {
         if (openAIWS && openAIWS.readyState === 1) openAIWS.close();
         if (audioInputCleanup) audioInputCleanup();
-        openAIWS = createOpenAIWebSocket({
+        openAIWS = await createOpenAIWebSocket({
             client,
             openAIApiKey,
             instructions,
