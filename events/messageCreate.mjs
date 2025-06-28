@@ -1,6 +1,6 @@
 // events/messageCreate.mjs
 export default async function ({ client, log, msg }, message) {
-    log.debug('messageCreate', { message });
+    log.debug('messageCreate', { message: JSON.stringify(message) });
     // Only respond if the bot is mentioned or the message is a reply to the bot
     const botId = client.user.id;
     const mentioned = message.mentions && message.mentions.users && message.mentions.users.has(botId);
