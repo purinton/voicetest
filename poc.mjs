@@ -11,6 +11,7 @@ import prism from 'prism-media';
 import ffmpegStatic from 'ffmpeg-static';
 import { PassThrough } from 'stream';
 import { spawn } from 'child_process';
+import fs from 'fs';
 
 config();
 
@@ -23,6 +24,8 @@ if (!DISCORD_TOKEN || !OPENAI_API_KEY || !GUILD_ID || !VOICE_CHANNEL_ID) {
     console.error('Missing DISCORD_TOKEN, OPENAI_API_KEY, GUILD_ID, or VOICE_CHANNEL_ID in .env');
     process.exit(1);
 }
+
+const instructions = fs.readFileSync('instructions.txt', 'utf-8');
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
@@ -162,6 +165,7 @@ function createOpenAIWebSocket() {
             JSON.stringify({
                 type: 'session.update',
                 session: {
+                    instructions,
                     modalities: ['text', 'audio'],
                     input_audio_transcription: { model: 'gpt-4o-mini-transcribe' },
                     input_audio_format: 'pcm16',
