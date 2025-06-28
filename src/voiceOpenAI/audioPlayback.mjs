@@ -67,15 +67,7 @@ export function createAudioPlayback(filter, audioPlayer, log) {
     }
 
     function startBlip() {
-        if (!audioPlayer) {
-            log.debug('[blip] audioPlayer not available');
-            return;
-        }
-        if (blipInterval) {
-            log.debug('[blip] blipInterval already running');
-            return;
-        }
-        log.debug('[blip] Starting blip playback');
+        if (!audioPlayer || blipInterval) return;
         const blipPCM = generateBlipPCM();
         blipStream = new PassThrough();
         const ffmpegArgs = [
@@ -89,46 +81,37 @@ export function createAudioPlayback(filter, audioPlayer, log) {
             '-ac', '1',
             'pipe:1',
         ];
-        log.debug('[blip] Spawning ffmpeg for blip with args:', ffmpegArgs);
         const ffmpegProcess = spawn(ffmpegStatic, ffmpegArgs);
-        ffmpegProcess.on('error', err => log.error('[blip] ffmpeg error:', err));
-        ffmpegProcess.stderr.on('data', data => log.debug('[blip] ffmpeg stderr:', data.toString()));
+        ffmpegProcess.on('error', log.error);
+        ffmpegProcess.stderr.on('data', data => log.debug('ffmpeg stderr:', data.toString()));
         const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
         blipStream.pipe(ffmpegProcess.stdin);
         ffmpegProcess.stdout.pipe(opusEncoder);
         blipResource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
         audioPlayer.play(blipResource);
-        log.debug('[blip] Started playing blipResource');
         // Write blip PCM in a loop
         blipInterval = setInterval(() => {
             if (blipStream && !blipStream.destroyed) {
-                log.debug('[blip] Writing blipPCM to blipStream');
                 blipStream.write(blipPCM);
-            } else {
-                log.debug('[blip] blipStream destroyed or missing');
             }
         }, 150); // play every 150ms
         // Write first blip immediately
-        log.debug('[blip] Writing first blipPCM');
         blipStream.write(blipPCM);
     }
 
     function stopBlip() {
-        log.debug('[blip] Stopping blip playback');
         if (blipInterval) {
             clearInterval(blipInterval);
             blipInterval = null;
-            log.debug('[blip] Cleared blipInterval');
         }
         if (blipStream) {
             blipStream.end();
             blipStream = null;
-            log.debug('[blip] Ended and cleared blipStream');
         }
         blipResource = null;
         // Optionally stop audioPlayer if not playing anything else
         if (audioPlayer) {
-            try { audioPlayer.stop(); log.debug('[blip] Stopped audioPlayer'); } catch (e) { log.error('[blip] Error stopping audioPlayer:', e); }
+            try { audioPlayer.stop(); } catch {}
         }
     }
 
