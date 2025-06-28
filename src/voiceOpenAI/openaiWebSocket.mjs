@@ -110,7 +110,22 @@ export async function createOpenAIWebSocket({ client,
         }
     });
     ws.on('error', (err) => log.error('OpenAI WebSocket error:', err));
-    ws.on('close', () => log.info('OpenAI WebSocket closed'));
+    // Heartbeat ping every 50 seconds
+    let heartbeatInterval = setInterval(() => {
+        if (ws.readyState === ws.OPEN) {
+            ws.ping();
+            log.debug('Sent heartbeat ping to OpenAI WebSocket');
+        }
+    }, 50000);
+    ws.on('close', () => {
+        log.info('OpenAI WebSocket closed');
+        clearInterval(heartbeatInterval);
+        // Auto-restart if onRestart is provided
+        if (typeof onRestart === 'function') {
+            log.info('Attempting to auto-restart OpenAI WebSocket after close');
+            onRestart();
+        }
+    });
     return ws;
 }
 
