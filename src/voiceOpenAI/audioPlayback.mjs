@@ -6,7 +6,7 @@ import { createAudioResource, StreamType } from '@discordjs/voice';
 
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
 
-function generateBlipPCM(durationMs = 300, freq = 440, sampleRate = 24000) {
+function generateBlipPCM(durationMs = 300, freq = 432, sampleRate = 24000) {
     // Generate a longer, louder sine wave PCM buffer
     const samples = Math.floor(sampleRate * (durationMs / 1000));
     const buffer = Buffer.alloc(samples * 2); // 16-bit mono
