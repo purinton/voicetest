@@ -8,7 +8,13 @@ import * as weather from '@purinton/openweathermap';
 const httpAgent = new http.Agent({ keepAlive: true });
 const httpsAgent = new https.Agent({ keepAlive: true });
 
-export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId }) {
+export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId, playback }) {
+    // Start blip if playback is available and a function_call is present
+    let blipActive = false;
+    if (playback && msg.response && Array.isArray(msg.response.output) && msg.response.output.some(item => item.type === 'function_call')) {
+        playback.startBlip();
+        blipActive = true;
+    }
     // Log any function calls issued by the AI along with their arguments
     if (msg.response && Array.isArray(msg.response.output)) {
         msg.response.output
@@ -37,6 +43,10 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, 
             type: 'conversation.item.create',
             item: { type: 'function_call_output', call_id, output: JSON.stringify(output) }
         }));
+        if (blipActive && playback) {
+            playback.stopBlip();
+            blipActive = false;
+        }
     };
     // Chuck Norris joke
     const funcChuck = msg.response.output.find(item => item.type === 'function_call' && item.name === 'get_chuck_norris_joke');
@@ -148,5 +158,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, 
         sendOutput(funcNow.call_id, result);
         return { handled: true, skipResponse: false };
     }
+    // At all return points after function is handled, ensure blip is stopped
+    if (blipActive && playback) playback.stopBlip();
     return { handled: false };
 }

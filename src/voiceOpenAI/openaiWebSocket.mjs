@@ -89,7 +89,7 @@ export async function createOpenAIWebSocket({ client,
             }
         }
         if (msg.type === 'response.done') {
-            const result = await handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId });
+            const result = await handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId, playback });
             if (result && result.handled) {
                 if (result.restart && typeof onRestart === 'function') {
                     log.info('Restarting OpenAI WebSocket session...');
