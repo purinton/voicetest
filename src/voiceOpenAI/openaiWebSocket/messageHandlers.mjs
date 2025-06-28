@@ -3,31 +3,18 @@ import fetch from 'node-fetch';
 import http from 'http';
 import https from 'https';
 import * as weather from '@purinton/openweathermap';
-// Generate a short sine blip at 24000Hz, 16-bit PCM
-function generateBlip(durationMs = 50, freq = 1000, sampleRate = 24000) {
-  const sampleCount = Math.floor((durationMs / 1000) * sampleRate);
-  const buffer = Buffer.alloc(sampleCount * 2);
-  for (let i = 0; i < sampleCount; i++) {
-    const t = i / sampleRate;
-    const amp = Math.sin(2 * Math.PI * freq * t);
-    buffer.writeInt16LE(Math.floor(amp * 32767), i * 2);
-  }
-  return buffer;
-}
 
 // Keep-alive agents for HTTP(S) requests
 const httpAgent = new http.Agent({ keepAlive: true });
 const httpsAgent = new https.Agent({ keepAlive: true });
 
-export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId, playback }) {
+export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId }) {
     // Log any function calls issued by the AI along with their arguments
     if (msg.response && Array.isArray(msg.response.output)) {
         msg.response.output
             .filter(item => item.type === 'function_call')
             .forEach(async fc => {
                 log.info(`AI invoked function '${fc.name}' with arguments:`, fc.arguments);
-                // play blip sound in voice channel
-                if (playback && playback.handleAudio) playback.handleAudio(generateBlip());
                 // Send Discord message with green check and formatted function name
                 if (client && channelId) {
                     try {
@@ -35,7 +22,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, 
                         if (channel && channel.send) {
                             // Convert function name to Title Case with spaces
                             const formattedName = fc.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                            await channel.send(`\u2705 **${formattedName}**`);
+                            await channel.send(`✅ **${formattedName}**`);
                         }
                     } catch (err) {
                         log.error('Failed to send function call message to Discord channel:', err);
