@@ -10,10 +10,11 @@ const httpAgent = new http.Agent({ keepAlive: true });
 const httpsAgent = new https.Agent({ keepAlive: true });
 
 export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId, playBeepFn }) {
-    // Play beep if any function_call is present
+    // Play beep if any function_call is present and not 'no_response'
     if (msg.response && Array.isArray(msg.response.output)) {
         const hasFunctionCall = msg.response.output.some(item => item.type === 'function_call');
-        if (hasFunctionCall && typeof playBeepFn === 'function') {
+        const isNoResponse = msg.response.output.some(item => item.type === 'function_call' && item.name === 'no_response');
+        if (hasFunctionCall && !isNoResponse && typeof playBeepFn === 'function') {
             await playBeepFn();
         }
         msg.response.output
