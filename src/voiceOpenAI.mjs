@@ -23,7 +23,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
             playback,
             onRestart: restartWebSocket
         });
-        audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log, client });
+        audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
     }
 
     openAIWS = await createOpenAIWebSocket({
@@ -35,7 +35,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         playback,
         onRestart: restartWebSocket
     });
-    audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log, client });
+    audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
 
     return async () => {
         log.debug('Cleaning up Voice/OpenAI resources');
