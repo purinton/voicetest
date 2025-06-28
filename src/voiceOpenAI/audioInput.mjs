@@ -3,8 +3,8 @@ import prism from 'prism-media';
 import ffmpegStatic from 'ffmpeg-static';
 import { spawn } from 'child_process';
 
-export function setupAudioInput({ voiceConnection, openAIWS, log }) {
-    const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
+export function setupAudioInput({ voiceConnection, openAIWS, log, client }) {
+    const userConverters = new Map();
     const activeUsers = new Set();
     let endTimer;
     const DEBOUNCE_MS = 100;
@@ -14,10 +14,50 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const userCache = new Map();
 
     // handler for user speech start
-    const onSpeechStart = (userId) => {
+    const onSpeechStart = async (userId) => {
         activeUsers.add(userId);
         if (endTimer) { clearTimeout(endTimer); endTimer = null; }
         log.info(`User ${userId} started speaking`);
+        // Fetch Discord user info
+        let username = 'unknown';
+        let nickname = '';
+        try {
+            const user = await client.users.fetch(userId);
+            username = user?.username || 'unknown';
+            // Try to get nickname from any mutual guild
+            let member = null;
+            for (const guild of client.guilds.cache.values()) {
+                try {
+                    member = await guild.members.fetch(userId);
+                    if (member) break;
+                } catch { }
+            }
+            if (member && member.nickname) nickname = member.nickname;
+        } catch (e) {
+            log.warn(`Could not fetch Discord user info for ${userId}:`, e);
+        }
+        // Send conversation.item.create with text
+        if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
+            const text = `User <@${userId}> discord username: ${username}, discord nickname: ${nickname || '(none)'} is speaking`;
+            const payload = {
+                event_id: `event_${Date.now()}`,
+                type: 'conversation.item.create',
+                item: {
+                    id: `msg_${Date.now()}`,
+                    type: 'message',
+                    role: 'user',
+                    content: [
+                        { type: 'input_text', text }
+                    ]
+                }
+            };
+            try {
+                openAIWS.send(JSON.stringify(payload));
+                log.debug('Sent user speaking message to OpenAI WS', { text });
+            } catch (err) {
+                log.error('Error sending user speaking message to OpenAI WS:', err);
+            }
+        }
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 100 },
         });
@@ -75,9 +115,9 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
         for (const { converter, opusDecoder } of userConverters.values()) {
-            try { converter.stdin.end(); } catch {};
-            try { converter.kill(); } catch {};
-            try { opusDecoder.destroy(); } catch {};
+            try { converter.stdin.end(); } catch { };
+            try { converter.kill(); } catch { };
+            try { opusDecoder.destroy(); } catch { };
         }
         userConverters.clear();
         userCache.clear();
