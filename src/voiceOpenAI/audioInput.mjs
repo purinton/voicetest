@@ -3,47 +3,6 @@ import prism from 'prism-media';
 import ffmpegStatic from 'ffmpeg-static';
 import { spawn } from 'child_process';
 
-async function sendUserSpeakingMessage({ userId, openAIWS, log, client }) {
-    let username = 'unknown';
-    let nickname = '';
-    try {
-        const user = await client.users.fetch(userId);
-        username = user?.username || 'unknown';
-        // Try to get nickname from any mutual guild
-        let member = null;
-        for (const guild of client.guilds.cache.values()) {
-            try {
-                member = await guild.members.fetch(userId);
-                if (member) break;
-            } catch { }
-        }
-        if (member && member.nickname) nickname = member.nickname;
-    } catch (e) {
-        log.warn(`Could not fetch Discord user info for ${userId}:`, e);
-    }
-    if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-        const text = `User <@${userId}> discord username: ${username}, discord nickname: ${nickname || '(none)'} is speaking`;
-        const payload = {
-            event_id: `event_${Date.now()}`,
-            type: 'conversation.item.create',
-            item: {
-                id: `msg_${Date.now()}`,
-                type: 'message',
-                role: 'user',
-                content: [
-                    { type: 'input_text', text }
-                ]
-            }
-        };
-        try {
-            openAIWS.send(JSON.stringify(payload));
-            log.debug('Sent user speaking message to OpenAI WS', { text });
-        } catch (err) {
-            log.error('Error sending user speaking message to OpenAI WS:', err);
-        }
-    }
-}
-
 export function setupAudioInput({ voiceConnection, openAIWS, log, client }) {
     const userConverters = new Map();
     const activeUsers = new Set();
@@ -59,7 +18,46 @@ export function setupAudioInput({ voiceConnection, openAIWS, log, client }) {
         activeUsers.add(userId);
         if (endTimer) { clearTimeout(endTimer); endTimer = null; }
         log.info(`User ${userId} started speaking`);
-        await sendUserSpeakingMessage({ userId, openAIWS, log, client });
+        // Fetch Discord user info
+        let username = 'unknown';
+        let nickname = '';
+        try {
+            const user = await client.users.fetch(userId);
+            username = user?.username || 'unknown';
+            // Try to get nickname from any mutual guild
+            let member = null;
+            for (const guild of client.guilds.cache.values()) {
+                try {
+                    member = await guild.members.fetch(userId);
+                    if (member) break;
+                } catch { }
+            }
+            if (member && member.nickname) nickname = member.nickname;
+        } catch (e) {
+            log.warn(`Could not fetch Discord user info for ${userId}:`, e);
+        }
+        // Send conversation.item.create with text
+        if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
+            const text = `User <@${userId}> discord username: ${username}, discord nickname: ${nickname || '(none)'} is speaking`;
+            const payload = {
+                event_id: `event_${Date.now()}`,
+                type: 'conversation.item.create',
+                item: {
+                    id: `msg_${Date.now()}`,
+                    type: 'message',
+                    role: 'user',
+                    content: [
+                        { type: 'input_text', text }
+                    ]
+                }
+            };
+            try {
+                openAIWS.send(JSON.stringify(payload));
+                log.debug('Sent user speaking message to OpenAI WS', { text });
+            } catch (err) {
+                log.error('Error sending user speaking message to OpenAI WS:', err);
+            }
+        }
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 100 },
         });
