@@ -12,7 +12,7 @@ const version = packageJson.version;
 const presence = { activities: [{ name: `voicetest v${version}`, type: 4 }], status: 'online' };
 
 const voice = 'ash';
-const filter = 'rubberband=pitch=0.75:tempo=1.0';
+const filter = 'rubberband=pitch=0.9:tempo=1.0';
 
 await createDiscord({
     log,
