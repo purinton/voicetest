@@ -2,7 +2,7 @@ import { PassThrough } from 'stream';
 import { spawn } from 'child_process';
 import prism from 'prism-media';
 import ffmpegStatic from 'ffmpeg-static';
-import { createAudioResource, StreamType, AudioPlayer, entersState, AudioPlayerStatus } from '@discordjs/voice';
+import { createAudioResource, StreamType } from '@discordjs/voice';
 
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
 
@@ -71,6 +71,7 @@ export function createAudioPlayback(filter, audioPlayer, log, voiceConnection) {
         blipStream.pipe(ffmpegProcess.stdin);
         const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
         ffmpegProcess.stdout.pipe(opusEncoder);
+        const { AudioPlayer, createAudioResource, StreamType, entersState, AudioPlayerStatus } = require('@discordjs/voice');
         const blipPlayer = new AudioPlayer();
         const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
         blipPlayer.play(resource);
