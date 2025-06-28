@@ -3,13 +3,13 @@ import fetch from 'node-fetch';
 import http from 'http';
 import https from 'https';
 import * as weather from '@purinton/openweathermap';
-// Generate a sine blip PCM buffer (16-bit) at given frequency, duration, and volume
-function generateBlip(durationMs = 300, freq = 432, sampleRate = 24000, volume = 0.5) {
+// Generate a short sine blip at 24000Hz, 16-bit PCM
+function generateBlip(durationMs = 50, freq = 1000, sampleRate = 24000) {
   const sampleCount = Math.floor((durationMs / 1000) * sampleRate);
   const buffer = Buffer.alloc(sampleCount * 2);
   for (let i = 0; i < sampleCount; i++) {
     const t = i / sampleRate;
-    const amp = Math.sin(2 * Math.PI * freq * t) * volume;
+    const amp = Math.sin(2 * Math.PI * freq * t);
     buffer.writeInt16LE(Math.floor(amp * 32767), i * 2);
   }
   return buffer;
@@ -26,7 +26,7 @@ export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, 
             .filter(item => item.type === 'function_call')
             .forEach(async fc => {
                 log.info(`AI invoked function '${fc.name}' with arguments:`, fc.arguments);
-                // play blip immediately when function starts
+                // play blip sound in voice channel
                 if (playback && playback.handleAudio) playback.handleAudio(generateBlip());
                 // Send Discord message with green check and formatted function name
                 if (client && channelId) {
