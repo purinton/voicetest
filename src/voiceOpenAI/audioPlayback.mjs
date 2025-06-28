@@ -6,7 +6,7 @@ import { createAudioResource, StreamType } from '@discordjs/voice';
 
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
 
-export function createAudioPlayback(filter, audioPlayer, log) {
+export function createAudioPlayback(filter, audioPlayer, log, voiceConnection) {
     let pcmCache = Buffer.alloc(0);
     let playbackStream;
 
@@ -50,5 +50,37 @@ export function createAudioPlayback(filter, audioPlayer, log) {
         pcmCache = Buffer.alloc(0);
     }
 
-    return { handleAudio, reset };
+    // Play a blip buffer immediately using a separate AudioPlayer
+    function playBlipImmediate(blipBuffer) {
+        if (!voiceConnection) return;
+        const blipStream = new PassThrough();
+        blipStream.end(blipBuffer);
+        const ffmpegArgs = [
+            '-f', 's16le',
+            '-ar', '24000',
+            '-ac', '1',
+            '-i', '-',
+            '-f', 's16le',
+            '-ar', '48000',
+            '-ac', '1',
+            'pipe:1',
+        ];
+        const ffmpegProcess = spawn(ffmpegStatic, ffmpegArgs);
+        ffmpegProcess.on('error', log.error);
+        ffmpegProcess.stderr.on('data', data => log.debug('ffmpeg stderr:', data.toString()));
+        blipStream.pipe(ffmpegProcess.stdin);
+        const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
+        ffmpegProcess.stdout.pipe(opusEncoder);
+        const { AudioPlayer, createAudioResource, StreamType, entersState, AudioPlayerStatus } = require('@discordjs/voice');
+        const blipPlayer = new AudioPlayer();
+        const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
+        blipPlayer.play(resource);
+        voiceConnection.subscribe(blipPlayer);
+        // Stop the player after playback
+        blipPlayer.once(AudioPlayerStatus.Idle, () => {
+            blipPlayer.stop();
+        });
+    }
+
+    return { handleAudio, reset, playBlipImmediate };
 }
