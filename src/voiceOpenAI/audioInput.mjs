@@ -38,7 +38,7 @@ async function sendUserSpeakingMessage({ userId, openAIWS, log, client }) {
         const payload2 = {
             type: "response.create",
             response: {
-                modalities: []
+                modalities: ["text"]
             },
         };
         try {
