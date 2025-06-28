@@ -22,26 +22,25 @@ const httpsAgent = new https.Agent({ keepAlive: true });
 export async function handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId, playback }) {
     // Log any function calls issued by the AI along with their arguments
     if (msg.response && Array.isArray(msg.response.output)) {
-        msg.response.output
-            .filter(item => item.type === 'function_call')
-            .forEach(async fc => {
-                log.info(`AI invoked function '${fc.name}' with arguments:`, fc.arguments);
-                // play blip immediately when function starts
-                if (playback && playback.handleAudio) playback.handleAudio(generateBlip());
-                // Send Discord message with green check and formatted function name
-                if (client && channelId) {
-                    try {
-                        const channel = await client.channels.fetch(channelId);
-                        if (channel && channel.send) {
-                            // Convert function name to Title Case with spaces
-                            const formattedName = fc.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                            await channel.send(`\u2705 **${formattedName}**`);
-                        }
-                    } catch (err) {
-                        log.error('Failed to send function call message to Discord channel:', err);
+        const functionCalls = msg.response.output.filter(item => item.type === 'function_call');
+        for (const fc of functionCalls) {
+            log.info(`AI invoked function '${fc.name}' with arguments:`, fc.arguments);
+            // play blip immediately when function starts (100ms, 432Hz, 50% volume)
+            if (playback && playback.handleAudio) playback.handleAudio(generateBlip(100, 432, 24000, 0.5));
+            // Send Discord message with green check and formatted function name
+            if (client && channelId) {
+                try {
+                    const channel = await client.channels.fetch(channelId);
+                    if (channel && channel.send) {
+                        // Convert function name to Title Case with spaces
+                        const formattedName = fc.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                        await channel.send(`\u2705 **${formattedName}**`);
                     }
+                } catch (err) {
+                    log.error('Failed to send function call message to Discord channel:', err);
                 }
-            });
+            }
+        }
     }
     // Helper to send function output
     const sendOutput = (call_id, output) => {
