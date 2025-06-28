@@ -114,7 +114,7 @@ export async function createOpenAIWebSocket({ client,
  * @param {string|null} previous_item_id - The ID of the previous item, or null to append.
  */
 export function attachSendMessageToClient(client, ws, log) {
-    client.sendOpenAIMessage = function (text, previous_item_id = null) {
+    client.sendOpenAIMessage = async function (text, previous_item_id = null) {
         if (!ws || ws.readyState !== ws.OPEN) {
             log.error('OpenAI WebSocket is not open');
             return;
@@ -135,7 +135,8 @@ export function attachSendMessageToClient(client, ws, log) {
                 ]
             }
         };
-        ws.send(JSON.stringify(event));
+        await ws.send(JSON.stringify(event));
+        ws.send(JSON.stringify({ type: 'response.create' }));
         log.debug('[OpenAI WS] Sent conversation.item.create', event);
     };
 }
