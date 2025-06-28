@@ -16,15 +16,14 @@ export async function createOpenAIWebSocket({ client,
     onRestart,
     channelId = process.env.VOICE_CHANNEL_ID || null
 }) {
-    const channel = await client.channels.fetch(channelId);
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     const sessionConfig = getSessionConfig({ instructions, voice });
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
+    attachSendMessageToClient(client, ws, log);
     ws.skipResponseCreate = new Set();
     ws.on('open', () => {
         log.info('Connected to OpenAI Realtime WebSocket');
-        ws.send(JSON.stringify({ type: 'session.update', session: sessionConfig }));
-        ws.send(JSON.stringify({ type: 'response.create' }));
+        client.sendOpenAIMessage('Hello');
     });
     ws.on('message', async (data) => {
         let msg;
@@ -105,7 +104,6 @@ export async function createOpenAIWebSocket({ client,
     });
     ws.on('error', (err) => log.error('OpenAI WebSocket error:', err));
     ws.on('close', () => log.info('OpenAI WebSocket closed'));
-    attachSendMessageToClient(client, ws, log);
     return ws;
 }
 
