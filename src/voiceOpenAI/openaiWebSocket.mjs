@@ -104,5 +104,38 @@ export async function createOpenAIWebSocket({ client,
     });
     ws.on('error', (err) => log.error('OpenAI WebSocket error:', err));
     ws.on('close', () => log.info('OpenAI WebSocket closed'));
+    attachSendMessageToClient(client, ws, log);
     return ws;
+}
+
+/**
+ * Send a user text message to the OpenAI Realtime WebSocket as a conversation.item.create event.
+ * @param {string} text - The text to send as a user message.
+ * @param {string|null} previous_item_id - The ID of the previous item, or null to append.
+ */
+export function attachSendMessageToClient(client, ws, log) {
+    client.sendOpenAIMessage = function (text, previous_item_id = null) {
+        if (!ws || ws.readyState !== ws.OPEN) {
+            log.error('OpenAI WebSocket is not open');
+            return;
+        }
+        const event = {
+            event_id: `event_${Date.now()}`,
+            type: 'conversation.item.create',
+            previous_item_id,
+            item: {
+                id: `msg_${Date.now()}`,
+                type: 'message',
+                role: 'user',
+                content: [
+                    {
+                        type: 'input_text',
+                        text
+                    }
+                ]
+            }
+        };
+        ws.send(JSON.stringify(event));
+        log.debug('[OpenAI WS] Sent conversation.item.create', event);
+    };
 }
