@@ -15,6 +15,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         if (openAIWS && openAIWS.readyState === 1) openAIWS.close();
         if (audioInputCleanup) audioInputCleanup();
         openAIWS = createOpenAIWebSocket({
+            client,
             openAIApiKey,
             instructions,
             voice,
