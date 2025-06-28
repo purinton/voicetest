@@ -23,7 +23,7 @@ async function sendUserSpeakingMessage({ userId, openAIWS, log, client }) {
     }
     if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
         const text = `${username} is speaking next:`;
-        const payload = {
+        const payload1 = {
             event_id: `event_${Date.now()}`,
             type: 'conversation.item.create',
             item: {
@@ -35,8 +35,15 @@ async function sendUserSpeakingMessage({ userId, openAIWS, log, client }) {
                 ]
             }
         };
+        const payload2 = {
+            type: "response.create",
+            response: {
+                modalities: []
+            },
+        };
         try {
-            openAIWS.send(JSON.stringify(payload));
+            openAIWS.send(JSON.stringify(payload1));
+            openAIWS.send(JSON.stringify(payload2));
             log.debug('Sent user speaking message to OpenAI WS', { text });
         } catch (err) {
             log.error('Error sending user speaking message to OpenAI WS:', err);
