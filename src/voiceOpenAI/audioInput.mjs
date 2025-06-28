@@ -4,7 +4,7 @@ import ffmpegStatic from 'ffmpeg-static';
 import { spawn } from 'child_process';
 
 export function setupAudioInput({ voiceConnection, openAIWS, log }) {
-    const userConverters = new Map();
+    const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
     const activeUsers = new Set();
     let endTimer;
     const DEBOUNCE_MS = 100;
@@ -22,13 +22,16 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             end: { behavior: 'silence', duration: 100 },
         });
         if (!userConverters.has(userId)) {
-            const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 48000 });
+            // Use stereo (2 channels) for opus decoder
+            const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
             opusStream.pipe(opusDecoder);
+            // ffmpeg: stereo input, center extraction, noise reduction, downsample to mono 24kHz
             const converter = spawn(ffmpegStatic, [
                 '-f', 's16le',
                 '-ar', '48000',
-                '-ac', '1',
+                '-ac', '2',
                 '-i', '-',
+                '-af', 'pan=mono|c0=0.5*c0+0.5*c1,afftdn', // center channel + noise reduction
                 '-f', 's16le',
                 '-ar', '24000',
                 '-ac', '1',
