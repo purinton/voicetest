@@ -24,6 +24,7 @@ export async function createOpenAIWebSocket({ client,
     ws.on('open', () => {
         log.info('Connected to OpenAI Realtime WebSocket');
         ws.send(JSON.stringify({ type: 'session.update', session: sessionConfig }));
+        ws.send(JSON.stringify({ type: 'response.create' }));
     });
     ws.on('message', async (data) => {
         let msg;
