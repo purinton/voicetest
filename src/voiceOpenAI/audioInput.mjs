@@ -4,11 +4,6 @@ import ffmpegStatic from 'ffmpeg-static';
 import { spawn } from 'child_process';
 import { PassThrough } from 'stream';
 
-let lastSpeakingUserId = null;
-export function getLastSpeakingUserId() {
-    return lastSpeakingUserId;
-}
-
 export function setupAudioInput({ voiceConnection, openAIWS, log, client }) {
     // Map of userId -> { decoder, passthrough, ffmpeg, buffer }
     const userStreams = new Map();
@@ -20,7 +15,6 @@ export function setupAudioInput({ voiceConnection, openAIWS, log, client }) {
     // handler for user speech start
     const onSpeechStart = async (userId) => {
         activeUsers.add(userId);
-        lastSpeakingUserId = userId;
         if (endTimer) { clearTimeout(endTimer); endTimer = null; }
         log.info(`User ${userId} started speaking`);
         const opusStream = voiceConnection.receiver.subscribe(userId, {
@@ -49,8 +43,8 @@ export function setupAudioInput({ voiceConnection, openAIWS, log, client }) {
                     const frame = buffer.slice(0, PCM_FRAME_SIZE_BYTES_24);
                     buffer = buffer.slice(PCM_FRAME_SIZE_BYTES_24);
                     if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-                        // Only send audio and type, no userId
-                        const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
+                        // Send userId as metadata for speaker identification
+                        const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64'), userId });
                         try {
                             openAIWS.send(payload);
                         } catch (err) {
@@ -84,32 +78,22 @@ export function setupAudioInput({ voiceConnection, openAIWS, log, client }) {
                     }, DEBOUNCE_MS);
                 }
             });
-        } else {
-            log.warn(`User ${userId} is already being processed`);
         }
     };
+    voiceConnection.receiver.speaking.on('start', onSpeechStart);
 
-    voiceConnection.on('speakingStart', (userId) => {
-        onSpeechStart(userId);
-    });
-
-    voiceConnection.on('speakingStop', (userId) => {
-        log.info(`User ${userId} stopped speaking`);
-        activeUsers.delete(userId);
-        // Clean up user pipeline
-        const entry = userStreams.get(userId);
-        if (entry) {
+    // Return a cleanup function to remove listeners and destroy decoders/ffmpeg
+    return () => {
+        voiceConnection.receiver.speaking.off('start', onSpeechStart);
+        for (const entry of userStreams.values()) {
             try { entry.decoder.destroy(); } catch {}
             try { entry.passthrough.end(); } catch {}
             try { entry.ffmpeg.stdin.end(); } catch {}
             try { entry.ffmpeg.kill(); } catch {}
-            userStreams.delete(userId);
         }
-        if (activeUsers.size === 0) {
-            endTimer = setTimeout(() => {
-                activeUsers.clear();
-                endTimer = null;
-            }, DEBOUNCE_MS);
-        }
-    });
+        userStreams.clear();
+        activeUsers.clear();
+        if (endTimer) { clearTimeout(endTimer); endTimer = null; }
+        log.info('Cleaned up audio input handlers and per-user ffmpeg');
+    };
 }

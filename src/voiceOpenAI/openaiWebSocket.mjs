@@ -2,7 +2,6 @@ import WebSocket from 'ws';
 import { getSessionConfig } from './openaiWebSocket/sessionConfig.mjs';
 import { handleFunctionCall } from './openaiWebSocket/messageHandlers.mjs';
 import { handleAudioDelta, handleAudioDone } from './openaiWebSocket/audioHandlers.mjs';
-import { getLastSpeakingUserId } from './audioInput.mjs';
 
 /**
  * Creates a WebSocket connection to the OpenAI realtime API.
@@ -45,8 +44,8 @@ export async function createOpenAIWebSocket({ client,
         // Send user transcription to Discord if present
         if (msg && msg.type === 'conversation.item.input_audio_transcription.completed' && msg.transcript && channelId && client) {
             try {
-                // Use last speaking userId from audioInput
-                const userId = getLastSpeakingUserId && getLastSpeakingUserId();
+                // Try to get userId from the message (sent from audioInput)
+                const userId = msg.userId;
                 let display = 'User';
                 if (userId && client.users) {
                     try {
