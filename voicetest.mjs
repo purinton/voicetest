@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import 'dotenv/config';
+import mcpClient from '@purinton/mcp-client';
 import { createDiscord } from '@purinton/discord';
 import { log, fs, path, registerHandlers, registerSignals } from '@purinton/common';
 
@@ -14,6 +15,10 @@ const presence = { activities: [{ name: `voicetest v${version}`, type: 4 }], sta
 const voice = 'ash';
 const filter = 'rubberband=pitch=0.95:tempo=1.05';
 
+const mcp = mcpClient({ log });
+const tools = await mcp.tools.list();
+log.debug('list-tools', { tools });
+
 await createDiscord({
     log,
     rootDir: path(import.meta),
@@ -22,6 +27,7 @@ await createDiscord({
         version,
         registerSignals,
         voice,
-        filter
+        filter,
+        mcp
     }
 });
