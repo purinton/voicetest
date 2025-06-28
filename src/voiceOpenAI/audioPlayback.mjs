@@ -6,16 +6,18 @@ import { createAudioResource, StreamType } from '@discordjs/voice';
 
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
 
-function generateBlipPCM(durationMs = 100, freq = 880, sampleRate = 24000) {
-    // Generate a short sine wave PCM buffer
+function generateBlipPCM(durationMs = 300, freq = 440, sampleRate = 24000) {
+    // Generate a longer, louder sine wave PCM buffer
     const samples = Math.floor(sampleRate * (durationMs / 1000));
     const buffer = Buffer.alloc(samples * 2); // 16-bit mono
+    const amplitude = 0.9; // much louder
     for (let i = 0; i < samples; i++) {
         const t = i / sampleRate;
-        const amplitude = 0.25; // reduce volume
         const value = Math.round(Math.sin(2 * Math.PI * freq * t) * 32767 * amplitude);
         buffer.writeInt16LE(value, i * 2);
     }
+    // Log a few sample values for debug
+    console.debug('[blip] PCM sample values:', Array.from(buffer.slice(0, 20)));
     return buffer;
 }
 
@@ -77,6 +79,7 @@ export function createAudioPlayback(filter, audioPlayer, log) {
         }
         log.debug('[blip] Starting blip playback');
         const blipPCM = generateBlipPCM();
+        log.debug('[blip] PCM length:', blipPCM.length);
         blipStream = new PassThrough();
         const ffmpegArgs = [
             '-f', 's16le',
@@ -107,7 +110,7 @@ export function createAudioPlayback(filter, audioPlayer, log) {
             } else {
                 log.debug('[blip] blipStream destroyed or missing');
             }
-        }, 150); // play every 150ms
+        }, 350); // play every 350ms (matches new duration)
         // Write first blip immediately
         log.debug('[blip] Writing first blipPCM');
         blipStream.write(blipPCM);
