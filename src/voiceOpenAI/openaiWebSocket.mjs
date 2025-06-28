@@ -19,7 +19,11 @@ export async function createOpenAIWebSocket({ client,
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     const sessionConfig = getSessionConfig({ instructions, voice });
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
-    attachSendMessageToClient(client, ws, log);
+    if (client) {
+        attachSendMessageToClient(client, ws, log);
+    } else {
+        log.warn('No client provided to attach sendOpenAIMessage');
+    }
     ws.skipResponseCreate = new Set();
     ws.on('open', () => {
         log.info('Connected to OpenAI Realtime WebSocket');
@@ -114,6 +118,10 @@ export async function createOpenAIWebSocket({ client,
  * @param {string|null} previous_item_id - The ID of the previous item, or null to append.
  */
 export function attachSendMessageToClient(client, ws, log) {
+    if (!client) {
+        log.warn('attachSendMessageToClient called with undefined client');
+        return;
+    }
     client.sendOpenAIMessage = async function (text, previous_item_id = null) {
         if (!ws || ws.readyState !== ws.OPEN) {
             log.error('OpenAI WebSocket is not open');
