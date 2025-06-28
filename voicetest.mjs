@@ -15,7 +15,7 @@ const presence = { activities: [{ name: `voicetest v${version}`, type: 4 }], sta
 const voice = 'ash';
 const filter = 'rubberband=pitch=0.95:tempo=1.05';
 
-const mcp = mcpClient({ log });
+const mcp = await mcpClient({ log });
 registerSignals({ log, shutdownHook: () => mcp.close() });
 const tools = await mcp.listTools();
 log.debug('list-tools', { tools });
