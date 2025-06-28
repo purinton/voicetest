@@ -1,8 +1,8 @@
 # [![Purinton Dev](https://purinton.us/logos/brand.png)](https://discord.gg/QSBxQnX7PF)
 
-## @purinton/voicetest [![npm version](https://img.shields.io/npm/v/@purinton/voicetest.svg)](https://www.npmjs.com/package/@purinton/voicetest)[![license](https://img.shields.io/github/license/purinton/voicetest.svg)](LICENSE)[![build status](https://github.com/purinton/voicetest/actions/workflows/nodejs.yml/badge.svg)](https://github.com/purinton/voicetest/actions)
+## @purinton/voicetest [![npm version](https://img.shields.io/npm/v/@purinton/voicetest.svg)](https://www.npmjs.com/package/@purinton/voicetest) [![license](https://img.shields.io/github/license/purinton/voicetest.svg)](LICENSE) [![build status](https://github.com/purinton/voicetest/actions/workflows/nodejs.yml/badge.svg)](https://github.com/purinton/voicetest/actions)
 
-A modern Discord app built with Node.js, based on the [@purinton/discord](https://github.com/purinton/discord) foundation.
+VoiceTest is a voice-enabled Discord bot built with Node.js and Discord.js. It captures live speech from users in a voice channel, streams it to OpenAI's GPT-4o-mini realtime API for transcription and AI response, then plays back synthesized voice responses—all in real time.
 
 ---
 
@@ -11,44 +11,53 @@ A modern Discord app built with Node.js, based on the [@purinton/discord](https:
 - [Features](#features)
 - [Getting Started](#getting-started)
 - [Configuration](#configuration)
-- [Running as a Service (systemd)](#running-as-a-service-systemd)
-- [Docker](#docker)
+- [Usage](#usage)
 - [Customization](#customization)
   - [Commands](#commands)
   - [Events](#events)
   - [Locales](#locales)
+- [Deployment](#deployment)
+  - [Docker](#docker)
+  - [Systemd](#systemd)
 - [Testing](#testing)
 - [Support](#support)
 - [License](#license)
+- [Links](#links)
 
 ## Features
 
-- Discord.js-based app with ESM support
-- Command and event handler architecture
-- Multi-language/localized responses
-- Environment variable support via dotenv
-- Logging and signal handling via `@purinton/common`
-- Ready for deployment with systemd or Docker
-- Jest for testing
+- Real-time voice-to-text transcription using OpenAI GPT-4o-mini realtime
+- AI-generated voice responses streamed back into Discord
+- High-quality audio encoding/decoding with FFmpeg and Prism-media
+- Modular command and event handler architecture via `@purinton/discord`
+- Multi-language/localized responses with built-in locale files
+- Graceful startup, shutdown, and error handling via `@purinton/common`
+- Ready for Docker and systemd deployment
+- Comprehensive Jest test suite covering locales, commands, and events
 
 ## Getting Started
 
-1. **Clone this project:**
+1. Clone this repository and install dependencies:
 
-   ```bash
+   ```powershell
    git clone https://github.com/purinton/voicetest.git
    cd voicetest
    npm install
    ```
 
-2. **Set up your environment:**
-   - Copy `.env.example` to `.env` and fill in your Discord app token and other secrets.
-   - Edit `package.json` (name, description, author, etc.)
-   - Update this `README.md` as needed.
+2. Copy and configure your environment variables and instructions:
 
-3. **Start the app locally:**
+   ```powershell
+   copy .env.example .env
+   copy instructions.txt.example instructions.txt
+   ```
 
-   ```bash
+   - Fill in `DISCORD_TOKEN`, `GUILD_ID`, `VOICE_CHANNEL_ID`, and `OPENAI_API_KEY` in `.env`.
+   - Edit instructions.txt to include any custom instructions for the voice agent.
+
+3. Start the bot locally:
+
+   ```powershell
    npm start
    # or
    node voicetest.mjs
@@ -56,78 +65,70 @@ A modern Discord app built with Node.js, based on the [@purinton/discord](https:
 
 ## Configuration
 
-- All configuration is handled via environment variables in the `.env` file.
-- See `.env.example` for required and optional variables.
+All settings are managed via environment variables in `.env`.
+See `.env.example` for required and optional keys.
 
-## Running as a Service (systemd)
+## Usage
 
-1. Copy `voicetest.service` to `/usr/lib/systemd/system/voicetest.service`.
-2. Edit the paths and user/group as needed.
-3. Reload systemd and start the service:
-
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable voicetest
-   sudo systemctl start voicetest
-   sudo systemctl status voicetest
-   ```
-
-## Docker
-
-1. Build the Docker image:
-
-   ```bash
-   docker build -t voicetest .
-   ```
-
-2. Run the container:
-
-   ```bash
-   docker run --env-file .env voicetest
-   ```
+1. Invite your bot to a Discord server with the correct permissions.
+2. Join the configured voice channel.
+3. Speak into the channel—VoiceTest will transcribe your speech, send it to the AI, and play back the AI’s response automatically.
 
 ## Customization
 
 ### Commands
 
-- Add new commands in the `commands/` directory.
-- Each command has a `.json` definition (for Discord registration/localization) and a `.mjs` handler (for logic).
+- Add new commands by placing a `.json` definition and `.mjs` handler in the `commands/` directory.
 
 ### Events
 
-- Add or modify event handlers in the `events/` directory.
-- Each Discord event (e.g., `ready`, `messageCreate`, `interactionCreate`) has its own handler file.
+- Add or modify event handlers in the `events/` directory. Handlers follow the Discord Gateway event names.
 
 ### Locales
 
-- Add or update language files in the `locales/` directory.
-- Localize command names, descriptions, and app responses.
+- Update or add locale files in the `locales/` directory. All responses and command metadata can be localized.
+
+## Deployment
+
+### Docker
+
+Build and run with Docker:
+
+```powershell
+docker build -t voicetest .
+docker run --env-file .env voicetest
+```
+
+### Systemd
+
+1. Copy `voicetest.service` to `/etc/systemd/system/voicetest.service`.
+2. Edit paths and user/group settings in the service file.
+3. Reload and start:
+
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable voicetest
+   sudo systemctl start voicetest
+   ```
 
 ## Testing
 
-- Run tests with:
+Run the full test suite:
 
-  ```bash
-  npm test
-  ```
-
-- Add your tests in the `tests/` folder or alongside your code.
+```powershell
+npm test
+```
 
 ## Support
 
-For help, questions, or to chat with the author and community, visit:
-
-[![Discord](https://purinton.us/logos/discord_96.png)](https://discord.gg/QSBxQnX7PF)[![Purinton Dev](https://purinton.us/logos/purinton_96.png)](https://discord.gg/QSBxQnX7PF)
-
-**[Purinton Dev on Discord](https://discord.gg/QSBxQnX7PF)**
+For questions or feedback, join the [Purinton Dev Discord](https://discord.gg/QSBxQnX7PF).
 
 ## License
 
-[MIT © 2025 Russell Purinton](LICENSE)
+MIT © 2025 Russell Purinton
 
 ## Links
 
-- [GitHub Repo](https://github.com/purinton/voicetest)
-- [GitHub Org](https://github.com/purinton)
-- [GitHub Personal](https://github.com/rpurinton)
+- [GitHub](https://github.com/purinton/voicetest)
+- [NPM](https://www.npmjs.com/package/@purinton/voicetest)
 - [Discord](https://discord.gg/QSBxQnX7PF)

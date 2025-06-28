@@ -2,7 +2,7 @@
     "name": "@purinton/voicetest",
     "type": "module",
     "version": "1.0.2",
-    "description": "A modern Discord app built with Node.js, based on the purinton/discord foundation.",
+    "description": "VoiceTest: a real-time voice-enabled Discord bot that streams speech to OpenAI GPT-4o and plays AI-driven voice responses.",
     "main": "voicetest.mjs",
     "scripts": {
         "start": "node voicetest.mjs",
@@ -13,8 +13,13 @@
         "url": "git+https://github.com/purinton/voicetest.git"
     },
     "keywords": [
-        "voicetest",
-        "nodejs"
+        "discord",
+        "voice",
+        "openai",
+        "gpt-4o",
+        "realtime",
+        "bot",
+        "voicetest"
     ],
     "author": "Russell Purinton <russell@purinton.us>",
     "license": "MIT",
