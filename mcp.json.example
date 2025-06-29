@@ -1,0 +1,14 @@
+{
+    "servers": [
+        {
+            "label": "server1",
+            "url": "https://localhost:1234",
+            "token": "12345"
+        },
+        {
+            "label": "server2",
+            "url": "http://localhost:2345/",
+            "token": "23456"
+        }
+    ]
+}
