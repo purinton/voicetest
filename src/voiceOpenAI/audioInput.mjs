@@ -8,12 +8,18 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
     const onSpeechStart = (userId) => {
         activeUsers.add(userId);
-        log.info(`User ${userId} started speaking`);
+        log.info(`[AUDIO] User ${userId} started speaking`);
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 100 },
         });
+        opusStream.on('data', (chunk) => log.debug(`[AUDIO] opusStream data for user ${userId}, length: ${chunk.length}`));
+        opusStream.on('readable', () => log.debug(`[AUDIO] opusStream readable for user ${userId}`));
+        opusStream.on('end', () => log.debug(`[AUDIO] opusStream end for user ${userId}`));
         // Always create a new pipeline for each utterance
         const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
+        opusDecoder.on('data', (chunk) => log.debug(`[AUDIO] opusDecoder data for user ${userId}, length: ${chunk.length}`));
+        opusDecoder.on('readable', () => log.debug(`[AUDIO] opusDecoder readable for user ${userId}`));
+        opusDecoder.on('end', () => log.debug(`[AUDIO] opusDecoder end for user ${userId}`));
         opusStream.pipe(opusDecoder);
         const converter = spawn(ffmpegStatic, [
             '-f', 's16le',
@@ -27,7 +33,8 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             'pipe:1',
         ]);
         converter.on('error', log.error);
-        converter.stderr.on('data', data => log.debug('discord ffmpeg stderr:', data.toString()));
+        converter.stderr.on('data', data => log.debug('[AUDIO] discord ffmpeg stderr:', data.toString()));
+        converter.stdout.on('data', (chunk) => log.debug(`[AUDIO] ffmpeg stdout data for user ${userId}, length: ${chunk.length}`));
         opusDecoder.pipe(converter.stdin);
         let cache = Buffer.alloc(0);
         converter.stdout.on('data', chunk => {
@@ -39,6 +46,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                     const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
                     try {
                         openAIWS.send(payload);
+                        log.debug(`[AUDIO] Sent audio frame to OpenAI WS for user ${userId}`);
                     } catch (err) {
                         log.error('Error sending audio to OpenAI WS:', err);
                     }
@@ -48,12 +56,13 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             }
         });
         opusStream.once('end', () => {
-            log.info(`User ${userId} stopped speaking`);
+            log.info(`[AUDIO] User ${userId} stopped speaking`);
             if (cache.length > 0) {
                 if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
                     const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: cache.toString('base64') });
                     try {
                         openAIWS.send(payload);
+                        log.debug(`[AUDIO] Sent final audio frame to OpenAI WS for user ${userId}`);
                     } catch (err) {
                         log.error('Error sending final audio to OpenAI WS:', err);
                     }
