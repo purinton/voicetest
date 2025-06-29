@@ -40,7 +40,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
     audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
 
     return async () => {
-        //log.debug('Cleaning up Voice/OpenAI resources');
+        log.debug('Cleaning up Voice/OpenAI resources');
         if (openAIWS && openAIWS.readyState === 1) openAIWS.close();
         if (audioInputCleanup) audioInputCleanup();
         if (voiceConnection) {

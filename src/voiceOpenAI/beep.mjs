@@ -31,7 +31,7 @@ export function playBeep(audioPlayer, log) {
     const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
     try {
         audioPlayer.play(resource);
-        log && //log.debug && //log.debug('Played beep (432Hz, 100ms)');
+        log && log.debug && log.debug('Played beep (432Hz, 100ms)');
     } catch (e) {
         log && log.error && log.error('Error playing beep:', e);
     }
