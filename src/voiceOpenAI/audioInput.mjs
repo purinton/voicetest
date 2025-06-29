@@ -61,20 +61,6 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             userConverters.set(userId, { opusDecoder, converter });
             opusStream.once('end', () => {
                 log.info(`User ${userId} stopped speaking`);
-                // FLUSH REMAINING AUDIO IN CACHE
-                if (cache.length > 0) {
-                    if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-                        const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: cache.toString('base64') });
-                        try {
-                            openAIWS.send(payload);
-                        } catch (err) {
-                            log.error('Error sending final audio to OpenAI WS:', err);
-                        }
-                    } else {
-                        log.warn('OpenAI WS not open, skipping final audio frame');
-                    }
-                    cache = Buffer.alloc(0);
-                }
                 activeUsers.delete(userId);
                 if (activeUsers.size === 0) {
                     endTimer = setTimeout(() => {
