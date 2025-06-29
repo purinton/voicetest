@@ -107,7 +107,12 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                     const handler = (await import(`file://${toolPath}`)).default;
                     let args = {};
                     try { args = fc.arguments ? JSON.parse(fc.arguments) : {}; } catch { }
-                    await handler({ call_id: fc.call_id, ws, log, args, client, channelId, restart });
+                    // Capture return value from handler
+                    const result = await handler({ call_id: fc.call_id, ws, log, args, client, channelId, restart });
+                    // If handler returns { restart: true }, propagate up
+                    if (result && result.restart) {
+                        return { handled: true, skipResponse: false, restart: true };
+                    }
                 } else {
                     log.warn(`No handler found for tool: ${fc.name}`);
                 }
