@@ -84,6 +84,8 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                         ws.send(JSON.stringify(event));
                         ws.send(JSON.stringify({ type: 'response.create' }));
                         log.debug('[OpenAI WS] Sent MCP result as user message');
+                        // Prevent outer handler from sending another response.create
+                        return { handled: true, skipResponse: true, restart: false };
                     }
                 } catch (err) {
                     log.error(`[MCP] Error calling tool '${fc.name}':`, err);
