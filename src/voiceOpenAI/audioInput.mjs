@@ -38,7 +38,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                 'pipe:1',
             ]);
             converter.on('error', log.error);
-            //converter.stderr.on('data', data => log.debug('discord ffmpeg stderr:', data.toString()));
+            converter.stderr.on('data', data => //log.debug('discord ffmpeg stderr:', data.toString()));
             opusDecoder.pipe(converter.stdin);
             let cache = Buffer.alloc(0);
             converter.stdout.on('data', chunk => {
