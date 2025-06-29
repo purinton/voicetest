@@ -23,7 +23,7 @@ const mcpServers = mcpConfig.servers || [];
 const mcpClients = {};
 let allMcpTools = [];
 for (const server of mcpServers) {
-    const client = await mcpClient({ log, url: server.url, token: server.token });
+    const client = await mcpClient({ log, baseUrl: server.url, token: server.token });
     mcpClients[server.label] = client;
     registerSignals({ log, shutdownHook: () => client.close() });
     const { tools } = await client.listTools();
