@@ -47,7 +47,7 @@ try {
     allLocalTools = fs.readdirSync(toolsDir)
         .filter(f => f.endsWith('.json'))
         .map(f => {
-            const tool = JSON.parse(fs.readFileSync(path.join(toolsDir, f), 'utf8'));
+            const tool = JSON.parse(fs.readFileSync(path(toolsDir, f), 'utf8'));
             // Mark as local tool for clarity
             return { ...tool, mcp_tool: false };
         });
