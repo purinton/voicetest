@@ -41,7 +41,7 @@ for (const server of mcpServers) {
 }
 
 // Load local tools from tools/*.json
-const toolsDir = path.resolve(process.cwd(), 'tools');
+const toolsDir = path(process.cwd(), 'tools');
 let allLocalTools = [];
 try {
     allLocalTools = fs.readdirSync(toolsDir)
