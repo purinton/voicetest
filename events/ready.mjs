@@ -1,7 +1,8 @@
 // events/ready.mjs
 export default async function (ctx, client) {
     const { log, presence, registerSignals, voice, filter, mcpClients, mcpTools, localTools, allTools, version } = ctx;
-    //log.debug('ready', { tag: client.user.tag });
+    // Also pass allMcpTools for MCP routing
+    const allMcpTools = mcpTools;
     log.info(`Logged in as ${client.user.tag}`);
     if (presence) client.user.setPresence(presence);
 
@@ -26,7 +27,8 @@ export default async function (ctx, client) {
                 mcpTools,
                 localTools,
                 allTools,
-                version
+                version,
+                allMcpTools // pass explicitly
             });
             registerSignals({
                 log, shutdownHook: async () => {

@@ -17,7 +17,9 @@ export async function createOpenAIWebSocket({ client,
     onRestart,
     channelId = process.env.VOICE_CHANNEL_ID || null,
     audioPlayer,
-    allTools // accept allTools directly
+    allTools, // accept allTools directly
+    allMcpTools, // pass all MCP tools
+    mcpClients // pass MCP clients
 }) {
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     // Use allTools if available, but strip extra properties for OpenAI schema compliance
@@ -51,7 +53,7 @@ export async function createOpenAIWebSocket({ client,
         try {
             msg = JSON.parse(data.toString());
             if (!msg.type || !msg.type.includes('delta')) {
-                log.debug('[OpenAI WS message parsed]', msg.type);
+                log.debug('[OpenAI WS message parsed]', msg.type ? msg : { value: msg });
             }
         } catch (e) {
             log.error('Failed to parse WS message', e);
@@ -105,7 +107,10 @@ export async function createOpenAIWebSocket({ client,
             }
         }
         if (msg.type === 'response.done') {
-            const result = await handleFunctionCall({ msg, ws, log, sessionConfig, client, channelId, playBeepFn: () => playBeep(audioPlayer, log) });
+            const result = await handleFunctionCall({
+                msg, ws, log, sessionConfig, client, channelId, playBeepFn: () => playBeep(audioPlayer, log),
+                allMcpTools, mcpClients // pass to handler
+            });
             if (result && result.handled) {
                 if (result.restart && typeof onRestart === 'function') {
                     log.info('Restarting OpenAI WebSocket session...');
