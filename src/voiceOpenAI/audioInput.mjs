@@ -22,7 +22,11 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             end: { behavior: 'silence', duration: 100 },
         });
         if (!userConverters.has(userId)) {
+            // Add ffmpeg flags for low-latency, realtime, and minimal buffering
             const converter = spawn(ffmpegStatic, [
+                '-re', // read input at native rate (realtime)
+                '-fflags', 'nobuffer', // disable buffer for low-latency
+                '-flags', 'low_delay', // low delay mode
                 '-f', 's16le',
                 '-ar', '48000',
                 '-ac', '2',
