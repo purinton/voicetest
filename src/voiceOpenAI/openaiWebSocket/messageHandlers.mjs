@@ -56,19 +56,44 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                     });
                     log.info(`[MCP] Tool '${fc.name}' result:`, mcpResult);
                     // Send MCP result content to Discord channel if present
-                    if (client && channelId && mcpResult && Array.isArray(mcpResult.content)) {
+                    let aiContent = '';
+                    if (mcpResult && Array.isArray(mcpResult.content)) {
                         for (const part of mcpResult.content) {
                             if (part.type === 'text' && part.text) {
+                                aiContent += part.text + '\n';
                                 try {
-                                    const channel = await client.channels.fetch(channelId);
-                                    if (channel && channel.send) {
-                                        await channel.send(`MCP: ${part.text}`);
+                                    if (client && channelId) {
+                                        const channel = await client.channels.fetch(channelId);
+                                        if (channel && channel.send) {
+                                            await channel.send(`MCP: ${part.text}`);
+                                        }
                                     }
                                 } catch (err) {
                                     log.error('Failed to send MCP result to Discord channel:', err);
                                 }
                             }
                         }
+                    }
+                    // Feed result back to OpenAI as a user message
+                    if (aiContent && ws && ws.readyState === ws.OPEN) {
+                        const event = {
+                            event_id: `event_${Date.now()}`,
+                            type: 'conversation.item.create',
+                            item: {
+                                id: `msg_${Date.now()}`,
+                                type: 'message',
+                                role: 'user',
+                                content: [
+                                    {
+                                        type: 'input_text',
+                                        text: aiContent.trim()
+                                    }
+                                ]
+                            }
+                        };
+                        ws.send(JSON.stringify(event));
+                        ws.send(JSON.stringify({ type: 'response.create' }));
+                        log.debug('[OpenAI WS] Sent MCP result as user message');
                     }
                 } catch (err) {
                     log.error(`[MCP] Error calling tool '${fc.name}':`, err);
