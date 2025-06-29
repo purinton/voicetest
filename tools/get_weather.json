@@ -1,0 +1,13 @@
+{
+  "type": "function",
+  "name": "get_weather",
+  "description": "Get current weather for a location. Parameters: lat (number), lon (number)",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number" },
+      "lon": { "type": "number" }
+    },
+    "required": ["lat", "lon"]
+  }
+}

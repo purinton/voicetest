@@ -1,0 +1,13 @@
+{
+  "type": "function",
+  "name": "get_24h_forecast",
+  "description": "Get 24-hour weather forecast for a location. Parameters: lat (number), lon (number)",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number" },
+      "lon": { "type": "number" }
+    },
+    "required": ["lat", "lon"]
+  }
+}

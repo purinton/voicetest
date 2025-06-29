@@ -1,0 +1,13 @@
+{
+  "type": "function",
+  "name": "get_sun_times",
+  "description": "Get sunrise and sunset times for a location. Parameters: lat (number), lon (number)",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number" },
+      "lon": { "type": "number" }
+    },
+    "required": ["lat", "lon"]
+  }
+}

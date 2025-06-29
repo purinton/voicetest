@@ -1,0 +1,10 @@
+{
+  "type": "function",
+  "name": "get_chuck_norris_joke",
+  "description": "Fetch a random joke from the Chuck Norris joke API.",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "type": "function",
+  "name": "get_current_datetime",
+  "description": "Get the current date and time in UTC and local time.",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}

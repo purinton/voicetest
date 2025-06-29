@@ -1,0 +1,10 @@
+{
+  "type": "function",
+  "name": "clear_conversation",
+  "description": "Clears and restarts the conversation",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}
