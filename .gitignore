@@ -62,7 +62,8 @@ node_modules/
 .cache
 
 # tools config
-tools.json
+mcp.json
+listTools.json
 
 # prompt config
 instructions.txt
