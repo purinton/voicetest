@@ -20,7 +20,6 @@ export async function createOpenAIWebSocket({ client,
 }) {
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     const sessionConfig = getSessionConfig({ instructions, voice });
-    log.debug('Creating OpenAI WebSocket with session config:', JSON.stringify(sessionConfig, null, 2));
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
     if (client) {
         attachSendMessageToClient(client, ws, log);

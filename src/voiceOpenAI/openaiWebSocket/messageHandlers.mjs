@@ -40,5 +40,5 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
         }
         return { handled: true, skipResponse: false };
     }
-    return { handled: false };
+    return { handled: false, skipResponse: true, restart: false };
 }
