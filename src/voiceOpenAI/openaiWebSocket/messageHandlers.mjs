@@ -37,13 +37,39 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
             if (mcpTool && mcpClients && mcpClients[mcpTool.mcp_label]) {
                 try {
                     let toolArgs = {};
-                    try { toolArgs = fc.arguments ? JSON.parse(fc.arguments) : {}; } catch {}
+                    try {
+                        if (typeof fc.arguments === 'string') {
+                            toolArgs = JSON.parse(fc.arguments);
+                            if (toolArgs && typeof toolArgs.value === 'string') {
+                                toolArgs = JSON.parse(toolArgs.value);
+                            }
+                        } else if (typeof fc.arguments === 'object' && fc.arguments !== null) {
+                            toolArgs = fc.arguments;
+                            if (toolArgs.value && typeof toolArgs.value === 'string') {
+                                toolArgs = JSON.parse(toolArgs.value);
+                            }
+                        }
+                    } catch {}
                     const mcpResult = await mcpClients[mcpTool.mcp_label].callTool({
                         name: fc.name.replace(`${mcpTool.mcp_label}_`, ''),
                         arguments: toolArgs
                     });
                     log.info(`[MCP] Tool '${fc.name}' result:`, mcpResult);
-                    // Optionally send result to ws or channel
+                    // Send MCP result content to Discord channel if present
+                    if (client && channelId && mcpResult && Array.isArray(mcpResult.content)) {
+                        for (const part of mcpResult.content) {
+                            if (part.type === 'text' && part.text) {
+                                try {
+                                    const channel = await client.channels.fetch(channelId);
+                                    if (channel && channel.send) {
+                                        await channel.send(`MCP: ${part.text}`);
+                                    }
+                                } catch (err) {
+                                    log.error('Failed to send MCP result to Discord channel:', err);
+                                }
+                            }
+                        }
+                    }
                 } catch (err) {
                     log.error(`[MCP] Error calling tool '${fc.name}':`, err);
                 }
