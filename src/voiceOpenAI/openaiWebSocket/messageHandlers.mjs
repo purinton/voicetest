@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 
-export async function handleFunctionCall({ msg, ws, log, client, channelId, playBeepFn, restart, context }) {
+export async function handleFunctionCall({ msg, ws, log, client, channelId, playBeepFn, restart, allMcpTools, mcpClients }) {
     let output = msg.response && msg.response.output;
     if (typeof output === 'string') {
         try { output = JSON.parse(output); } catch (e) { log.error('Failed to parse msg.response.output as JSON:', output); return { handled: false, skipResponse: true, restart: false }; }
@@ -33,14 +33,14 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                 }
             }
             // Route MCP tool calls
-            const mcpTool = context && context.allTools && context.allTools.find(t => t.name === fc.name && t.mcp_tool);
-            if (mcpTool && context.mcpClients && context.mcpClients[mcpTool.mcp_label]) {
+            const mcpTool = allMcpTools && allMcpTools.find(t => t.name === fc.name && t.mcp_tool);
+            if (mcpTool && mcpClients && mcpClients[mcpTool.mcp_label]) {
                 try {
-                    let args = {};
-                    try { args = fc.arguments ? JSON.parse(fc.arguments) : {}; } catch {}
-                    const mcpResult = await context.mcpClients[mcpTool.mcp_label].callTool({
-                        tool: fc.name.replace(`${mcpTool.mcp_label}_`, ''),
-                        args
+                    let toolArgs = {};
+                    try { toolArgs = fc.arguments ? JSON.parse(fc.arguments) : {}; } catch {}
+                    const mcpResult = await mcpClients[mcpTool.mcp_label].callTool({
+                        name: fc.name.replace(`${mcpTool.mcp_label}_`, ''),
+                        arguments: toolArgs
                     });
                     log.info(`[MCP] Tool '${fc.name}' result:`, mcpResult);
                     // Optionally send result to ws or channel
