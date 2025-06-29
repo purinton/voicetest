@@ -1,0 +1,10 @@
+{
+  "type": "function",
+  "name": "get_random_quote",
+  "description": "Fetch a random inspirational quote from a public API.",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}
