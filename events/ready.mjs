@@ -1,6 +1,6 @@
 // events/ready.mjs
-export default async function (context, client) {
-    const { log, presence, registerSignals, voice, filter } = context;
+export default async function (ctx, client) {
+    const { log, presence, registerSignals, voice, filter, mcpClients, mcpTools, localTools, allTools, version } = ctx;
     //log.debug('ready', { tag: client.user.tag });
     log.info(`Logged in as ${client.user.tag}`);
     if (presence) client.user.setPresence(presence);
@@ -17,7 +17,16 @@ export default async function (context, client) {
                 guildId,
                 voiceChannelId,
                 openAIApiKey,
-                ...context // Pass full context for downstream logic
+                log,
+                presence,
+                registerSignals,
+                voice,
+                filter,
+                mcpClients,
+                mcpTools,
+                localTools,
+                allTools,
+                version
             });
             registerSignals({
                 log, shutdownHook: async () => {

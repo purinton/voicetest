@@ -16,10 +16,12 @@ export async function createOpenAIWebSocket({ client,
     playback,
     onRestart,
     channelId = process.env.VOICE_CHANNEL_ID || null,
-    audioPlayer
+    audioPlayer,
+    allTools // accept allTools directly
 }) {
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
-    const sessionConfig = getSessionConfig({ instructions, voice });
+    // Use allTools if available
+    const sessionConfig = getSessionConfig({ instructions, voice, tools: allTools });
     log.debug('sessionConfig', { sessionConfig: JSON.stringify(sessionConfig) });
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
     if (client) {

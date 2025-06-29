@@ -4,7 +4,7 @@ import { createAudioPlayback } from './voiceOpenAI/audioPlayback.mjs';
 import { createOpenAIWebSocket } from './voiceOpenAI/openaiWebSocket.mjs';
 import { setupAudioInput } from './voiceOpenAI/audioInput.mjs';
 
-export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, voice, filter, log }) {
+export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, log, presence, registerSignals, voice, filter, mcpClients, mcpTools, localTools, allTools, version }) {
     const instructions = loadInstructions(log);
     const { voiceConnection, audioPlayer } = setupVoiceConnection({ client, guildId, voiceChannelId, log });
     const playback = createAudioPlayback(filter, audioPlayer, log);
@@ -22,7 +22,8 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
             log,
             playback,
             onRestart: restartWebSocket,
-            audioPlayer
+            audioPlayer,
+            allTools // pass allTools directly
         });
         audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
     }
@@ -35,7 +36,8 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         log,
         playback,
         onRestart: restartWebSocket,
-        audioPlayer
+        audioPlayer,
+        allTools // pass allTools directly
     });
     audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
 

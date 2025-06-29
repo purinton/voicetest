@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-
 // Session config for OpenAI WebSocket
 export function getSessionConfig({ instructions, voice, tools }) {
     // Accept merged tools as argument (local + MCP)
