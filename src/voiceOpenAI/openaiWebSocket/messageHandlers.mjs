@@ -55,22 +55,12 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                         arguments: toolArgs
                     });
                     log.info(`[MCP] Tool '${fc.name}' result:`, mcpResult);
-                    // Send MCP result content to Discord channel if present
+                    // Do NOT send MCP result to Discord channel
                     let aiContent = '';
                     if (mcpResult && Array.isArray(mcpResult.content)) {
                         for (const part of mcpResult.content) {
                             if (part.type === 'text' && part.text) {
                                 aiContent += part.text + '\n';
-                                try {
-                                    if (client && channelId) {
-                                        const channel = await client.channels.fetch(channelId);
-                                        if (channel && channel.send) {
-                                            await channel.send(`MCP: ${part.text}`);
-                                        }
-                                    }
-                                } catch (err) {
-                                    log.error('Failed to send MCP result to Discord channel:', err);
-                                }
                             }
                         }
                     }
