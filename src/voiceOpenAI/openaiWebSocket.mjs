@@ -38,9 +38,9 @@ export async function createOpenAIWebSocket({ client,
         let msg;
         try {
             msg = JSON.parse(data.toString());
-            log.debug('[OpenAI WS message parsed]', msg.type);
+            //log.debug('[OpenAI WS message parsed]', msg.type);
         } catch (e) {
-            log.debug('Failed to parse WS message', e);
+            //log.debug('Failed to parse WS message', e);
             return;
         }
         // Send user transcription to Discord if present
@@ -56,7 +56,7 @@ export async function createOpenAIWebSocket({ client,
         }
         // Debug: log assistant response structure
         if (msg && msg.type === 'response.done' && msg.response) {
-            log.debug('[Assistant response structure]', JSON.stringify(msg.response.output));
+            //log.debug('[Assistant response structure]', JSON.stringify(msg.response.output));
         }
         // Send assistant response text or transcript to Discord if present
         if (msg && msg.type === 'response.done' && msg.response && Array.isArray(msg.response.output) && channelId && client) {
@@ -82,11 +82,11 @@ export async function createOpenAIWebSocket({ client,
                                 log.error('Failed to send assistant audio transcript to Discord channel:', err);
                             }
                         } else {
-                            log.debug('[Assistant content part]', JSON.stringify(part));
+                            //log.debug('[Assistant content part]', JSON.stringify(part));
                         }
                     }
                 } else {
-                    log.debug('[Assistant output item]', JSON.stringify(item));
+                    //log.debug('[Assistant output item]', JSON.stringify(item));
                 }
             }
         }
@@ -116,7 +116,7 @@ export async function createOpenAIWebSocket({ client,
     let heartbeatInterval = setInterval(() => {
         if (ws.readyState === ws.OPEN) {
             ws.ping();
-            log.debug('Sent heartbeat ping to OpenAI WebSocket');
+            //log.debug('Sent heartbeat ping to OpenAI WebSocket');
         }
     }, 50000);
     ws.on('close', () => {
@@ -164,6 +164,6 @@ export function attachSendMessageToClient(client, ws, log) {
         };
         await ws.send(JSON.stringify(event));
         ws.send(JSON.stringify({ type: 'response.create' }));
-        log.debug('[OpenAI WS] Sent conversation.item.create', event);
+        //log.debug('[OpenAI WS] Sent conversation.item.create', event);
     };
 }
