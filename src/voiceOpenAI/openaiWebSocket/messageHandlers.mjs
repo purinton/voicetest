@@ -49,18 +49,26 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                                 toolArgs = JSON.parse(toolArgs.value);
                             }
                         }
-                    } catch {}
+                    } catch { }
                     const mcpResult = await mcpClients[mcpTool.mcp_label].callTool({
                         name: fc.name.replace(`${mcpTool.mcp_label}_`, ''),
                         arguments: toolArgs
                     });
-                    log.info(`[MCP] Tool '${fc.name}' result:`, mcpResult);
-                    // Do NOT send MCP result to Discord channel
+                    log.debug(`[MCP] Tool '${fc.name}' result:`, mcpResult);
                     let aiContent = '';
                     if (mcpResult && Array.isArray(mcpResult.content)) {
                         for (const part of mcpResult.content) {
                             if (part.type === 'text' && part.text) {
-                                aiContent += part.text + '\n';
+                                let text = part.text;
+                                try {
+                                    const parsed = JSON.parse(text);
+                                    if (typeof parsed === 'object') {
+                                        text = JSON.stringify(parsed);
+                                    }
+                                } catch (e) {
+                                    // Not JSON, leave as is
+                                }
+                                aiContent += text + '\n';
                             }
                         }
                     }
