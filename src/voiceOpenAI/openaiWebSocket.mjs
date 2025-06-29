@@ -53,7 +53,7 @@ export async function createOpenAIWebSocket({ client,
         try {
             msg = JSON.parse(data.toString());
             if (!msg.type || !msg.type.includes('delta')) {
-                log.debug('[OpenAI WS message parsed]', msg.type ? msg : { value: msg });
+                log.debug('[OpenAI WS message parsed]', msg.type);
             }
         } catch (e) {
             log.error('Failed to parse WS message', e);
