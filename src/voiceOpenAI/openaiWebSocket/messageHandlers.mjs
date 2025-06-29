@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 
-export async function handleFunctionCall({ msg, ws, log, client, channelId, playBeepFn, restart }) {
+export async function handleFunctionCall({ msg, ws, log, client, channelId, playBeepFn, restart, context }) {
     let output = msg.response && msg.response.output;
     if (typeof output === 'string') {
         try { output = JSON.parse(output); } catch (e) { log.error('Failed to parse msg.response.output as JSON:', output); return { handled: false, skipResponse: true, restart: false }; }
@@ -32,6 +32,24 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                     log.error('Failed to send function call message to Discord channel:', err);
                 }
             }
+            // Route MCP tool calls
+            const mcpTool = context && context.allTools && context.allTools.find(t => t.name === fc.name && t.mcp_tool);
+            if (mcpTool && context.mcpClients && context.mcpClients[mcpTool.mcp_label]) {
+                try {
+                    let args = {};
+                    try { args = fc.arguments ? JSON.parse(fc.arguments) : {}; } catch {}
+                    const mcpResult = await context.mcpClients[mcpTool.mcp_label].callTool({
+                        tool: fc.name.replace(`${mcpTool.mcp_label}_`, ''),
+                        args
+                    });
+                    log.info(`[MCP] Tool '${fc.name}' result:`, mcpResult);
+                    // Optionally send result to ws or channel
+                } catch (err) {
+                    log.error(`[MCP] Error calling tool '${fc.name}':`, err);
+                }
+                continue;
+            }
+            // Local tool fallback
             try {
                 const toolPath = path.resolve(process.cwd(), 'tools', `${fc.name}.mjs`);
                 if (fs.existsSync(toolPath)) {

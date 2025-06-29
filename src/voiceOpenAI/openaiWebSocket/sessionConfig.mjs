@@ -2,18 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 // Session config for OpenAI WebSocket
-export function getSessionConfig({ instructions, voice }) {
-    // Dynamically load all tool JSON files from the tools directory
-    const toolsDir = path.resolve(process.cwd(), 'tools');
-    let tools = [];
-    try {
-        tools = fs.readdirSync(toolsDir)
-            .filter(f => f.endsWith('.json'))
-            .map(f => JSON.parse(fs.readFileSync(path.join(toolsDir, f), 'utf8')));
-    } catch (err) {
-        // fallback to empty tools array if error
-        tools = [];
-    }
+export function getSessionConfig({ instructions, voice, tools }) {
+    // Accept merged tools as argument (local + MCP)
     return {
         modalities: ['text', 'audio'],
         instructions,
@@ -22,7 +12,7 @@ export function getSessionConfig({ instructions, voice }) {
         output_audio_format: 'pcm16',
         turn_detection: { type: 'server_vad' },
         voice,
-        tools,
+        tools: tools || [],
         tool_choice: 'auto'
     };
 }
