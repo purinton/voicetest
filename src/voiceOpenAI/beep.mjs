@@ -25,14 +25,13 @@ export function playBeep(audioPlayer, log) {
     const beepPCM = generateBeepPCM();
     const stream = new PassThrough();
     stream.end(beepPCM);
-    // Encode to Opus for Discord
     const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
     stream.pipe(opusEncoder);
     const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
     try {
         audioPlayer.play(resource);
-        log && log.debug && log.debug('Played beep (432Hz, 100ms)');
+        //log.debug('Played beep (432Hz, 100ms)');
     } catch (e) {
-        log && log.error && log.error('Error playing beep:', e);
+        log.error('Error playing beep:', e);
     }
 }
