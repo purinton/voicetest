@@ -33,7 +33,7 @@ export async function createOpenAIWebSocket({ client,
         };
     });
     const sessionConfig = getSessionConfig({ instructions, voice, tools: toolsForOpenAI });
-    log.debug('sessionConfig', { sessionConfig });
+    //log.debug('sessionConfig', { sessionConfig });
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
     if (client) {
         attachSendMessageToClient(client, ws, log);
