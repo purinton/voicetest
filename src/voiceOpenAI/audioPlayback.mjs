@@ -28,7 +28,7 @@ export function createAudioPlayback(filter, audioPlayer, log) {
             ];
             const ffmpegProcess = spawn(ffmpegStatic, ffmpegArgs);
             ffmpegProcess.on('error', log.error);
-            ffmpegProcess.stderr.on('data', data => //log.debug('ffmpeg stderr:', data.toString()));
+            //ffmpegProcess.stderr.on('data', data => log.debug('ffmpeg stderr:', data.toString()));
             const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
             playbackStream.pipe(ffmpegProcess.stdin);
             ffmpegProcess.stdout.pipe(opusEncoder);
