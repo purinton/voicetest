@@ -20,8 +20,17 @@ export async function createOpenAIWebSocket({ client,
     allTools // accept allTools directly
 }) {
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
-    // Use allTools if available
-    const sessionConfig = getSessionConfig({ instructions, voice, tools: allTools });
+    // Use allTools if available, but strip extra properties for OpenAI schema compliance
+    const toolsForOpenAI = (allTools || []).map(tool => {
+        // Only include OpenAI-compatible keys
+        return {
+            type: tool.type,
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters
+        };
+    });
+    const sessionConfig = getSessionConfig({ instructions, voice, tools: toolsForOpenAI });
     log.debug('sessionConfig', { sessionConfig });
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
     if (client) {
