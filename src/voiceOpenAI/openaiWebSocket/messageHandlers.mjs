@@ -4,14 +4,22 @@ import fs from 'fs';
 
 
 export async function handleFunctionCall({ msg, ws, log, client, channelId, playBeepFn, restart }) {
-    if (msg.response && Array.isArray(msg.response.output)) {
-        log.debug('[FunctionCall] msg.response.output:', JSON.stringify(msg.response.output));
-        const hasFunctionCall = msg.response.output.some(item => item.type === 'function_call');
-        const isNoResponse = msg.response.output.some(item => item.type === 'function_call' && item.name === 'no_response');
+    let output = msg.response && msg.response.output;
+    if (typeof output === 'string') {
+        try { output = JSON.parse(output); } catch (e) { log.error('Failed to parse msg.response.output as JSON:', output); return { handled: false, skipResponse: true, restart: false }; }
+    }
+    if (output && Array.isArray(output)) {
+        log.debug('[FunctionCall] msg.response.output:', JSON.stringify(output));
+        const functionCalls = output.filter(item => item.type === 'function_call');
+        if (functionCalls.length === 0) {
+            return { handled: false, skipResponse: true, restart: false };
+        }
+        const hasFunctionCall = functionCalls.length > 0;
+        const isNoResponse = functionCalls.some(item => item.name === 'no_response');
         if (hasFunctionCall && !isNoResponse && typeof playBeepFn === 'function') {
             await playBeepFn();
         }
-        for (const fc of msg.response.output.filter(item => item.type === 'function_call')) {
+        for (const fc of functionCalls) {
             log.info(`AI invoked function '${fc.name}' with arguments:`, fc.arguments);
             if (client && channelId) {
                 try {
