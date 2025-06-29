@@ -39,9 +39,9 @@ export async function createOpenAIWebSocket({ client,
         let msg;
         try {
             msg = JSON.parse(data.toString());
-            //log.debug('[OpenAI WS message parsed]', msg.type);
+            log.debug('[OpenAI WS message parsed]', msg.type);
         } catch (e) {
-            //log.debug('Failed to parse WS message', e);
+            log.error('Failed to parse WS message', e);
             return;
         }
         // Send user transcription to Discord if present
@@ -165,6 +165,6 @@ export function attachSendMessageToClient(client, ws, log) {
         };
         await ws.send(JSON.stringify(event));
         ws.send(JSON.stringify({ type: 'response.create' }));
-        //log.debug('[OpenAI WS] Sent conversation.item.create', event);
+        log.debug('[OpenAI WS] Sent conversation.item.create, response.create');
     };
 }
