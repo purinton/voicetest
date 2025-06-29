@@ -1,10 +1,16 @@
 {
   "type": "function",
   "name": "get_current_datetime",
-  "description": "Get the current date and time in UTC and local time.",
+  "description": "Get the current date and time in UTC and for specified timezones.",
   "parameters": {
     "type": "object",
-    "properties": {},
+    "properties": {
+      "timezones": {
+        "type": "array",
+        "description": "An array of IANA timezone names (e.g. 'America/New_York', 'Asia/Tokyo'). If omitted, only UTC and local time are returned.",
+        "items": { "type": "string" }
+      }
+    },
     "required": []
   }
 }
