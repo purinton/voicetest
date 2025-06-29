@@ -22,10 +22,6 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             end: { behavior: 'silence', duration: 100 },
         });
         if (!userConverters.has(userId)) {
-            // Use stereo (2 channels) for opus decoder
-            const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
-            opusStream.pipe(opusDecoder);
-            // ffmpeg: stereo input, center extraction, noise reduction, downsample to mono 24kHz
             const converter = spawn(ffmpegStatic, [
                 '-f', 's16le',
                 '-ar', '48000',
@@ -38,14 +34,16 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                 'pipe:1',
             ]);
             converter.on('error', log.error);
-            //converter.stderr.on('data', data => log.debug('discord ffmpeg stderr:', data.toString()));
+            converter.stderr.on('data', data => log.debug('discord ffmpeg stderr:', data.toString()));
+            const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
+            opusStream.pipe(opusDecoder);
             opusDecoder.pipe(converter.stdin);
             let cache = Buffer.alloc(0);
             converter.stdout.on('data', chunk => {
                 cache = Buffer.concat([cache, chunk]);
                 while (cache.length >= PCM_FRAME_SIZE_BYTES_24) {
-                    const frame = cache.slice(0, PCM_FRAME_SIZE_BYTES_24);
-                    cache = cache.slice(PCM_FRAME_SIZE_BYTES_24);
+                    const frame = cache.subarray(0, PCM_FRAME_SIZE_BYTES_24);
+                    cache = cache.subarray(PCM_FRAME_SIZE_BYTES_24);
                     if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
                         const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
                         try {
@@ -64,7 +62,6 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                 activeUsers.delete(userId);
                 if (activeUsers.size === 0) {
                     endTimer = setTimeout(() => {
-                        // retain converters for reuse; just clear pending batches
                         activeUsers.clear();
                         endTimer = null;
                     }, DEBOUNCE_MS);
@@ -78,9 +75,9 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
         for (const { converter, opusDecoder } of userConverters.values()) {
-            try { converter.stdin.end(); } catch {};
-            try { converter.kill(); } catch {};
-            try { opusDecoder.destroy(); } catch {};
+            try { converter.stdin.end(); } catch { };
+            try { converter.kill(); } catch { };
+            try { opusDecoder.destroy(); } catch { };
         }
         userConverters.clear();
         userCache.clear();
