@@ -7,7 +7,7 @@ export function getSessionConfig({ instructions, voice, tools }) {
         input_audio_transcription: { model: 'gpt-4o-mini-transcribe' },
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',
-        turn_detection: { type: 'server_vad' },
+        turn_detection: { type: 'semantic_vad' },
         voice,
         tools: tools || [],
         tool_choice: 'auto'
