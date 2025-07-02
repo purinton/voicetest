@@ -4,7 +4,7 @@ export function getSessionConfig({ instructions, voice, tools }) {
     return {
         modalities: ['text', 'audio'],
         instructions,
-        input_audio_transcription: { model: 'gpt-4o-mini-transcribe' },
+        input_audio_transcription: { model: 'whisper1' },
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',
         turn_detection: { type: 'server_vad' },
