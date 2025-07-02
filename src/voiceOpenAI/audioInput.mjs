@@ -1,7 +1,6 @@
 import WebSocket from 'ws';
 import prism from 'prism-media';
-import ffmpegStatic from 'ffmpeg-static';
-import { spawn } from 'child_process';
+import { Resampler } from '@purinton/resampler';
 
 export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
@@ -25,27 +24,15 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             // Use stereo (2 channels) for opus decoder
             const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
             opusStream.pipe(opusDecoder);
-            // ffmpeg: stereo input, center extraction, noise reduction, downsample to mono 24kHz
-            const converter = spawn(ffmpegStatic, [
-                '-f', 's16le',
-                '-ar', '48000',
-                '-ac', '2',
-                '-i', '-',
-                '-af', 'pan=mono|c0=0.5*c0+0.5*c1,afftdn', // center channel + noise reduction
-                '-f', 's16le',
-                '-ar', '24000',
-                '-ac', '1',
-                'pipe:1',
-            ]);
-            converter.on('error', log.error);
-            //converter.stderr.on('data', data => log.debug('discord ffmpeg stderr:', data.toString()));
-            opusDecoder.pipe(converter.stdin);
+            // Resample to mono 24kHz using Resampler
+            const resampler = new Resampler({ inRate: 48000, outRate: 24000, inChannels: 2, outChannels: 1 });
+            opusDecoder.pipe(resampler);
             let cache = Buffer.alloc(0);
-            converter.stdout.on('data', chunk => {
+            resampler.on('data', chunk => {
                 cache = Buffer.concat([cache, chunk]);
                 while (cache.length >= PCM_FRAME_SIZE_BYTES_24) {
-                    const frame = cache.slice(0, PCM_FRAME_SIZE_BYTES_24);
-                    cache = cache.slice(PCM_FRAME_SIZE_BYTES_24);
+                    const frame = cache.subarray(0, PCM_FRAME_SIZE_BYTES_24);
+                    cache = cache.subarray(PCM_FRAME_SIZE_BYTES_24);
                     if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
                         const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
                         try {
@@ -58,7 +45,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                     }
                 }
             });
-            userConverters.set(userId, { opusDecoder, converter });
+            userConverters.set(userId, { opusDecoder, resampler });
             opusStream.once('end', () => {
                 log.info(`User ${userId} stopped speaking`);
                 activeUsers.delete(userId);

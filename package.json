@@ -45,6 +45,7 @@
         "@purinton/discord": "^1.0.11",
         "@purinton/mcp-client": "^1.0.6",
         "@purinton/openweathermap": "^1.0.4",
+        "@purinton/resampler": "^1.0.0",
         "dotenv": "^17.0.0",
         "ffmpeg-static": "^5.2.0",
         "node-fetch": "^3.3.2"
