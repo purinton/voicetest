@@ -109,7 +109,6 @@ export async function createOpenAIWebSocket({ client,
                 if (result.restart && typeof onRestart === 'function') {
                     log.debug('Restarting OpenAI WebSocket session...');
                     ws.close();
-                    onRestart();
                     return;
                 }
                 if (!result.skipResponse) {
