@@ -35,8 +35,6 @@ export function createAudioPlayback(audioPlayer) {
             });
         }
         pcmCache = Buffer.alloc(0);
-        // ensure audio player is stopped to release resources
-        try { audioPlayer.stop(); } catch { }
     }
 
     return { handleAudio, reset };
