@@ -1,7 +1,7 @@
 {
     "name": "@purinton/voicetest",
     "type": "module",
-    "version": "1.0.11",
+    "version": "1.0.12",
     "description": "VoiceTest: a real-time voice-enabled Discord bot that streams speech to OpenAI GPT-4o and plays AI-driven voice responses.",
     "main": "voicetest.mjs",
     "scripts": {
