@@ -4,14 +4,38 @@ import { Resampler } from '@purinton/resampler';
 
 export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
-    const activeUsers = new Set();
     const DEBOUNCE_MS = 100;
     const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
     const userCache = new Map();
     let endTimer;
+
+    // New: Speaker lock and queue
+    let currentSpeakerId = null;
+    const waitingQueue = [];
+    const userBuffers = new Map(); // userId -> Buffer[]
+
+    function sendAudioFrame(frame) {
+        if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
+            const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
+            try {
+                openAIWS.send(payload);
+            } catch (err) {
+                log.error('Error sending audio to OpenAI WS:', err);
+            }
+        } else {
+            log.warn('OpenAI WS not open, skipping audio frame');
+        }
+    }
+
+    function processBufferedAudio(userId) {
+        const buffers = userBuffers.get(userId) || [];
+        for (const frame of buffers) {
+            sendAudioFrame(frame);
+        }
+        userBuffers.set(userId, []);
+    }
+
     const onSpeechStart = (userId) => {
-        activeUsers.add(userId);
-        if (endTimer) { clearTimeout(endTimer); endTimer = null; }
         log.debug(`User ${userId} started speaking`);
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 100 },
@@ -27,29 +51,36 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                 while (cache.length >= PCM_FRAME_SIZE_BYTES_24) {
                     const frame = cache.subarray(0, PCM_FRAME_SIZE_BYTES_24);
                     cache = cache.subarray(PCM_FRAME_SIZE_BYTES_24);
-                    if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-                        const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
-                        try {
-                            openAIWS.send(payload);
-                        } catch (err) {
-                            log.error('Error sending audio to OpenAI WS:', err);
-                        }
+                    if (currentSpeakerId === null) {
+                        // No one is speaking, this user gets the lock
+                        currentSpeakerId = userId;
+                        sendAudioFrame(frame);
+                    } else if (currentSpeakerId === userId) {
+                        // This user holds the lock, send audio
+                        sendAudioFrame(frame);
                     } else {
-                        log.warn('OpenAI WS not open, skipping audio frame');
+                        // Another user is speaking, buffer this user's audio
+                        if (!userBuffers.has(userId)) userBuffers.set(userId, []);
+                        userBuffers.get(userId).push(frame);
+                        if (!waitingQueue.includes(userId)) waitingQueue.push(userId);
                     }
                 }
             });
             userConverters.set(userId, { opusDecoder, resampler });
             opusStream.once('end', () => {
                 log.debug(`User ${userId} stopped speaking`);
-                activeUsers.delete(userId);
-                if (activeUsers.size === 0) {
-                    endTimer = setTimeout(() => {
-                        // retain converters for reuse; just clear pending batches
-                        activeUsers.clear();
-                        endTimer = null;
-                    }, DEBOUNCE_MS);
+                if (currentSpeakerId === userId) {
+                    // Speaker finished, check for next in queue
+                    if (waitingQueue.length > 0) {
+                        const nextUserId = waitingQueue.shift();
+                        currentSpeakerId = nextUserId;
+                        processBufferedAudio(nextUserId);
+                    } else {
+                        currentSpeakerId = null;
+                    }
                 }
+                // Clean up buffer for this user
+                userBuffers.set(userId, []);
             });
         }
     };
@@ -59,13 +90,15 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
         for (const { converter, opusDecoder } of userConverters.values()) {
-            try { converter.stdin.end(); } catch { };
-            try { converter.kill(); } catch { };
+            try { converter?.stdin?.end(); } catch { };
+            try { converter?.kill?.(); } catch { };
             try { opusDecoder.destroy(); } catch { };
         }
         userConverters.clear();
         userCache.clear();
-        activeUsers.clear();
+        currentSpeakerId = null;
+        waitingQueue.length = 0;
+        userBuffers.clear();
         if (endTimer) { clearTimeout(endTimer); endTimer = null; }
         log.debug('Cleaned up audio input handlers and converters');
     };
