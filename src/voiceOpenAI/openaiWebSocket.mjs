@@ -129,13 +129,26 @@ export async function createOpenAIWebSocket({ client,
             ws.ping();
         }
     }, 50000);
+    // Improved reconnect logic: restart immediately if last reconnect > 1s ago, else wait 1s
     const RECONNECT_DELAY_MS = 1000;
+    let lastReconnectTime = 0;
     ws.on('close', () => {
         log.debug('OpenAI WebSocket closed');
         clearInterval(heartbeatInterval);
         if (typeof onRestart === 'function') {
-            log.debug(`Reconnecting in ${RECONNECT_DELAY_MS}ms`);
-            setTimeout(() => onRestart(), RECONNECT_DELAY_MS);
+            const now = Date.now();
+            const sinceLast = now - lastReconnectTime;
+            if (sinceLast > RECONNECT_DELAY_MS) {
+                lastReconnectTime = now;
+                log.debug('Reconnecting immediately (not rate-limited)');
+                onRestart();
+            } else {
+                log.debug(`Reconnecting in ${RECONNECT_DELAY_MS}ms (rate-limited)`);
+                setTimeout(() => {
+                    lastReconnectTime = Date.now();
+                    onRestart();
+                }, RECONNECT_DELAY_MS);
+            }
         }
     });
     return ws;
