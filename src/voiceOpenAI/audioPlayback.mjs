@@ -26,10 +26,13 @@ export function createAudioPlayback(audioPlayer) {
         }
     }
 
+
     function reset() {
         if (playbackStream) {
             playbackStream.end();
-            playbackStream = undefined;
+            playbackStream.on('finish', () => {
+                playbackStream = undefined;
+            });
         }
         pcmCache = Buffer.alloc(0);
     }
