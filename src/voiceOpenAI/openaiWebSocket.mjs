@@ -119,8 +119,6 @@ export async function createOpenAIWebSocket({ client,
         }
         if (msg && msg.type === 'response.audio.delta') {
             handleAudioDelta({ msg, playback, log });
-        } else if (msg && msg.type === 'response.audio.done') {
-            handleAudioDone({ playback, log });
         }
     });
     ws.on('error', (err) => log.error('OpenAI WebSocket error:', err));
