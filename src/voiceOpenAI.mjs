@@ -1,13 +1,14 @@
-import { loadInstructions } from './voiceOpenAI/instructions.mjs';
-import { setupVoiceConnection } from './voiceOpenAI/voiceConnection.mjs';
-import { createAudioPlayback } from './voiceOpenAI/audioPlayback.mjs';
-import { createOpenAIWebSocket } from './voiceOpenAI/openaiWebSocket.mjs';
 import { setupAudioInput } from './voiceOpenAI/audioInput.mjs';
+import { loadInstructions } from './voiceOpenAI/instructions.mjs';
+import { createAudioPlayback } from './voiceOpenAI/audioPlayback.mjs';
+import { setupVoiceConnection } from './voiceOpenAI/voiceConnection.mjs';
+import { createOpenAIWebSocket } from './voiceOpenAI/openaiWebSocket.mjs';
 
-export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, log, presence, registerSignals, voice, filter, mcpClients, mcpTools, localTools, allTools, version, allMcpTools }) {
+export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAIApiKey, log, voice, mcpClients, allTools, mcpTools }) {
     const instructions = loadInstructions(log);
     const { voiceConnection, audioPlayer } = setupVoiceConnection({ client, guildId, voiceChannelId, log });
-    const playback = createAudioPlayback(filter, audioPlayer, log);
+    const playback = createAudioPlayback(audioPlayer, log);
+
     let openAIWS;
     let audioInputCleanup;
 
@@ -24,7 +25,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
             onRestart: restartWebSocket,
             audioPlayer,
             allTools,
-            allMcpTools,
+            mcpTools,
             mcpClients
         });
         audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
@@ -40,13 +41,12 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         onRestart: restartWebSocket,
         audioPlayer,
         allTools,
-        allMcpTools,
+        mcpTools,
         mcpClients
     });
     audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
 
     return async () => {
-        //log.debug('Cleaning up Voice/OpenAI resources');
         if (openAIWS && openAIWS.readyState === 1) openAIWS.close();
         if (audioInputCleanup) audioInputCleanup();
         if (voiceConnection) {

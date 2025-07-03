@@ -17,14 +17,12 @@ export async function createOpenAIWebSocket({ client,
     onRestart,
     channelId = process.env.VOICE_CHANNEL_ID || null,
     audioPlayer,
-    allTools, // accept allTools directly
-    allMcpTools, // pass all MCP tools
-    mcpClients // pass MCP clients
+    allTools,
+    mcpTools,
+    mcpClients
 }) {
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
-    // Use allTools if available, but strip extra properties for OpenAI schema compliance
     const toolsForOpenAI = (allTools || []).map(tool => {
-        // Only include OpenAI-compatible keys
         return {
             type: tool.type,
             name: tool.name,
@@ -33,7 +31,6 @@ export async function createOpenAIWebSocket({ client,
         };
     });
     const sessionConfig = getSessionConfig({ instructions, voice, tools: toolsForOpenAI });
-    //log.debug('sessionConfig', { sessionConfig });
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
     if (client) {
         attachSendMessageToClient(client, ws, log);
@@ -63,7 +60,6 @@ export async function createOpenAIWebSocket({ client,
             log.error('Failed to parse WS message', e);
             return;
         }
-        // Send user transcription to Discord if present
         if (msg && msg.type === 'conversation.item.input_audio_transcription.completed' && msg.transcript && channelId && client) {
             try {
                 const channel = await client.channels.fetch(channelId);
@@ -74,11 +70,6 @@ export async function createOpenAIWebSocket({ client,
                 log.error('Failed to send user transcription to Discord channel:', err);
             }
         }
-        // Debug: log assistant response structure
-        if (msg && msg.type === 'response.done' && msg.response) {
-            //log.debug('[Assistant response structure]', JSON.stringify(msg.response.output));
-        }
-        // Send assistant response text or transcript to Discord if present
         if (msg && msg.type === 'response.done' && msg.response && Array.isArray(msg.response.output) && channelId && client) {
             for (const item of msg.response.output) {
                 if (item.type === 'message' && Array.isArray(item.content)) {
@@ -101,19 +92,15 @@ export async function createOpenAIWebSocket({ client,
                             } catch (err) {
                                 log.error('Failed to send assistant audio transcript to Discord channel:', err);
                             }
-                        } else {
-                            //log.debug('[Assistant content part]', JSON.stringify(part));
                         }
                     }
-                } else {
-                    //log.debug('[Assistant output item]', JSON.stringify(item));
                 }
             }
         }
         if (msg.type === 'response.done') {
             const result = await handleFunctionCall({
                 msg, ws, log, sessionConfig, client, channelId, playBeepFn: () => playBeep(audioPlayer, log),
-                allMcpTools, mcpClients // pass to handler
+                mcpTools, mcpClients // pass to handler
             });
             if (result && result.handled) {
                 if (result.restart && typeof onRestart === 'function') {
@@ -135,17 +122,14 @@ export async function createOpenAIWebSocket({ client,
         }
     });
     ws.on('error', (err) => log.error('OpenAI WebSocket error:', err));
-    // Heartbeat ping every 50 seconds
     let heartbeatInterval = setInterval(() => {
         if (ws.readyState === ws.OPEN) {
             ws.ping();
-            //log.debug('Sent heartbeat ping to OpenAI WebSocket');
         }
     }, 50000);
     ws.on('close', () => {
         log.info('OpenAI WebSocket closed');
         clearInterval(heartbeatInterval);
-        // Auto-restart if onRestart is provided
         if (typeof onRestart === 'function') {
             log.info('Attempting to auto-restart OpenAI WebSocket after close');
             onRestart();

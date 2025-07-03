@@ -1,81 +1,57 @@
-import { config } from 'dotenv';
-import { Client, GatewayIntentBits } from 'discord.js';
-import {
-    joinVoiceChannel,
-    createAudioPlayer,
-    createAudioResource,
-    StreamType,
-} from '@discordjs/voice';
+import 'dotenv/config';
+import fs from 'fs';
 import WebSocket from 'ws';
 import prism from 'prism-media';
-import ffmpegStatic from 'ffmpeg-static';
 import { PassThrough } from 'stream';
-import { spawn } from 'child_process';
-import fs from 'fs';
+import { Resampler } from '@purinton/resampler';
+import { Client, GatewayIntentBits } from 'discord.js';
+import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, } from '@discordjs/voice';
 
-config();
-
+const PCM_FRAME_SIZE_BYTES = 960 * 2;
+const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const GUILD_ID = process.env.GUILD_ID;
 const VOICE_CHANNEL_ID = process.env.VOICE_CHANNEL_ID;
+const instructions = fs.readFileSync('instructions.txt', 'utf-8');
+const userConverters = new Map();
+
+let voiceConnection;
+let audioPlayer;
+let openAIWS;
+let openaiPcmCache = Buffer.alloc(0);
 
 if (!DISCORD_TOKEN || !OPENAI_API_KEY || !GUILD_ID || !VOICE_CHANNEL_ID) {
     console.error('Missing DISCORD_TOKEN, OPENAI_API_KEY, GUILD_ID, or VOICE_CHANNEL_ID in .env');
     process.exit(1);
 }
 
-const instructions = fs.readFileSync('instructions.txt', 'utf-8');
-
-const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
-});
-
-let voiceConnection;
-let audioPlayer;
-let openAIWS;
-
-const PCM_FRAME_SIZE_BYTES = 960 * 2;
-const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
-
-let openaiPcmCache = Buffer.alloc(0);
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 
 function handleOpenAIAudio(audioBuffer) {
     if (!audioPlayer || !voiceConnection) return;
-
     openaiPcmCache = Buffer.concat([openaiPcmCache, audioBuffer]);
-
     if (!handleOpenAIAudio.playbackStream) {
         handleOpenAIAudio.playbackStream = new PassThrough();
-
-        const ffmpegArgs = [
-            '-f', 's16le',
-            '-ar', '24000',
-            '-ac', '1',
-            '-i', '-',
-            '-f', 's16le',
-            '-ar', '48000',
-            '-ac', '1',
-            'pipe:1',
-        ];
-        const ffmpegProcess = spawn(ffmpegStatic, ffmpegArgs);
-        ffmpegProcess.on('error', console.error);
-        ffmpegProcess.stderr.on('data', data => console.error('ffmpeg stderr:', data.toString()));
+        // Resample from 24kHz to 48kHz using Resampler
+        const resampler = new Resampler({
+            inRate: 24000,
+            outRate: 48000,
+            inChannels: 1,
+            outChannels: 1,
+            filterWindow: 8,
+        });
         const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
-        handleOpenAIAudio.playbackStream.pipe(ffmpegProcess.stdin);
-        ffmpegProcess.stdout.pipe(opusEncoder);
+        handleOpenAIAudio.playbackStream.pipe(resampler).pipe(opusEncoder);
         const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
         audioPlayer.play(resource);
     }
-
     while (openaiPcmCache.length >= PCM_FRAME_SIZE_BYTES) {
         const frame = openaiPcmCache.slice(0, PCM_FRAME_SIZE_BYTES);
         openaiPcmCache = openaiPcmCache.slice(PCM_FRAME_SIZE_BYTES);
         handleOpenAIAudio.playbackStream.write(frame);
     }
 }
-
-const userConverters = new Map();
 
 client.once('ready', async () => {
     try {
@@ -99,11 +75,8 @@ client.once('ready', async () => {
 
         audioPlayer = createAudioPlayer();
         voiceConnection.subscribe(audioPlayer);
-
         console.log('Joined voice channel');
-
         openAIWS = createOpenAIWebSocket();
-
         voiceConnection.receiver.speaking.on('start', (userId) => {
             console.log(`User ${userId} started speaking`);
 
@@ -114,15 +87,17 @@ client.once('ready', async () => {
             if (!userConverters.has(userId)) {
                 const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 48000 });
                 opusStream.pipe(opusDecoder);
-                const converter = spawn(ffmpegStatic, [
-                    '-f', 's16le', '-ar', '48000', '-ac', '1', '-i', '-',
-                    '-f', 's16le', '-ar', '24000', '-ac', '1', 'pipe:1',
-                ]);
-                converter.on('error', console.error);
-                converter.stderr.on('data', data => console.error('discord ffmpeg stderr:', data.toString()));
-                opusDecoder.pipe(converter.stdin);
+                // Resample from 48kHz to 24kHz using Resampler
+                const resampler = new Resampler({
+                    inRate: 48000,
+                    outRate: 24000,
+                    inChannels: 1,
+                    outChannels: 1,
+                    filterWindow: 8,
+                });
+                opusDecoder.pipe(resampler);
                 let cache = Buffer.alloc(0);
-                converter.stdout.on('data', chunk => {
+                resampler.on('data', chunk => {
                     cache = Buffer.concat([cache, chunk]);
                     while (cache.length >= PCM_FRAME_SIZE_BYTES_24) {
                         const frame = cache.slice(0, PCM_FRAME_SIZE_BYTES_24);
@@ -131,14 +106,15 @@ client.once('ready', async () => {
                         openAIWS.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') }));
                     }
                 });
-                userConverters.set(userId, { opusDecoder, converter });
+                userConverters.set(userId, { opusDecoder, resampler });
             }
 
             opusStream.on('end', () => {
                 console.log(`User ${userId} stopped speaking`);
                 const entry = userConverters.get(userId);
                 if (entry) {
-                    entry.converter.stdin.end();
+                    try { entry.opusDecoder.destroy(); } catch { }
+                    try { entry.resampler.destroy(); } catch { }
                     userConverters.delete(userId);
                 }
             });
@@ -215,7 +191,6 @@ function createOpenAIWebSocket() {
 
 client.login(DISCORD_TOKEN);
 
-// Graceful shutdown handlers
 async function shutdown() {
     console.log('Shutting down gracefully...');
     if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
@@ -249,5 +224,7 @@ process.on('unhandledRejection', async (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     await shutdown();
 });
-
-
+process.on('exit', async (code) => {
+    console.log(`Process exiting with code: ${code}`);
+    await shutdown();
+});

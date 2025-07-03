@@ -1,12 +1,8 @@
 // events/ready.mjs
 export default async function (ctx, client) {
-    const { log, presence, registerSignals, voice, filter, mcpClients, mcpTools, localTools, allTools, version } = ctx;
-    // Also pass allMcpTools for MCP routing
-    const allMcpTools = mcpTools;
+    const { log, presence, registerSignals, voice, mcpClients, mcpTools, localTools, allTools, version } = ctx;
     log.info(`Logged in as ${client.user.tag}`);
     if (presence) client.user.setPresence(presence);
-
-    // Integrate voice + OpenAI logic
     const { setupVoiceOpenAI } = await import('../src/voiceOpenAI.mjs');
     const guildId = process.env.GUILD_ID;
     const voiceChannelId = process.env.VOICE_CHANNEL_ID;
@@ -22,13 +18,11 @@ export default async function (ctx, client) {
                 presence,
                 registerSignals,
                 voice,
-                filter,
                 mcpClients,
                 mcpTools,
                 localTools,
                 allTools,
-                version,
-                allMcpTools // pass explicitly
+                version
             });
             registerSignals({
                 log, shutdownHook: async () => {
