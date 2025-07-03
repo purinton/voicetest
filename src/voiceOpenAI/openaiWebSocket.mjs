@@ -106,10 +106,9 @@ export async function createOpenAIWebSocket({ client,
                 mcpTools, mcpClients // pass to handler
             });
             if (result && result.handled) {
-                if (result.restart && typeof onRestart === 'function') {
+                if (result.restart) {
                     log.debug('Restarting OpenAI WebSocket session...');
                     ws.close();
-                    onRestart();
                     return;
                 }
                 if (!result.skipResponse) {
@@ -165,12 +164,7 @@ export function attachSendMessageToClient(client, ws, log) {
                 id: `msg_${Date.now()}`,
                 type: 'message',
                 role: 'user',
-                content: [
-                    {
-                        type: 'input_text',
-                        text
-                    }
-                ]
+                content: [{ type: 'input_text', text }]
             }
         };
         await ws.send(JSON.stringify(event));
