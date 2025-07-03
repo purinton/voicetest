@@ -1,4 +1,3 @@
-
 import WebSocket from 'ws';
 import prism from 'prism-media';
 import { Resampler } from '@purinton/resampler';
@@ -15,39 +14,9 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const waitingQueue = [];
     const userBuffers = new Map(); // userId -> Buffer[]
 
-
-    // Helper to get the best speaker label for a userId
-    function getSpeakerLabel(userId) {
-        try {
-            // Try to get the member from the guild
-            const guild = voiceConnection.joinConfig?.guildId
-                ? voiceConnection.client.guilds.cache.get(voiceConnection.joinConfig.guildId)
-                : null;
-            const member = guild ? guild.members.cache.get(userId) : null;
-            if (member) {
-                if (member.nickname) return member.nickname;
-                if (member.displayName) return member.displayName;
-                if (member.user && member.user.username) return member.user.username;
-            }
-            // Fallback: try user from client
-            const user = voiceConnection.client.users.cache.get(userId);
-            if (user) {
-                if (user.displayName) return user.displayName;
-                if (user.username) return user.username;
-            }
-        } catch (e) {
-            log.warn('Could not resolve speaker label for user', userId, e);
-        }
-        return userId;
-    }
-
-    function sendAudioFrame(frame, userId) {
+    function sendAudioFrame(frame) {
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-            const payload = JSON.stringify({
-                type: 'input_audio_buffer.append',
-                audio: frame.toString('base64'),
-                speaker: getSpeakerLabel(userId)
-            });
+            const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
             try {
                 openAIWS.send(payload);
             } catch (err) {
@@ -61,7 +30,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     function processBufferedAudio(userId) {
         const buffers = userBuffers.get(userId) || [];
         for (const frame of buffers) {
-            sendAudioFrame(frame, userId);
+            sendAudioFrame(frame);
         }
         userBuffers.set(userId, []);
     }
@@ -85,10 +54,10 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                     if (currentSpeakerId === null) {
                         // No one is speaking, this user gets the lock
                         currentSpeakerId = userId;
-                        sendAudioFrame(frame, userId);
+                        sendAudioFrame(frame);
                     } else if (currentSpeakerId === userId) {
                         // This user holds the lock, send audio
-                        sendAudioFrame(frame, userId);
+                        sendAudioFrame(frame);
                     } else {
                         // Another user is speaking, buffer this user's audio
                         if (!userBuffers.has(userId)) userBuffers.set(userId, []);
