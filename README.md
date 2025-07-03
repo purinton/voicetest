@@ -28,7 +28,7 @@ VoiceTest is a voice-enabled Discord bot built with Node.js and Discord.js. It c
 
 - Real-time voice-to-text transcription using OpenAI GPT-4o-mini realtime
 - AI-generated voice responses streamed back into Discord
-- High-quality audio encoding/decoding with FFmpeg and Prism-media
+- High-quality audio encoding/decoding with `@purinton/resampler` and Prism-media
 - Modular command and event handler architecture via `@purinton/discord`
 - Multi-language/localized responses with built-in locale files
 - Graceful startup, shutdown, and error handling via `@purinton/common`
