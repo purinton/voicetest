@@ -5,7 +5,9 @@ import { Resampler } from '@purinton/resampler';
 export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
     const activeUsers = new Set();
+    const DEBOUNCE_MS = 100;
     const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
+    const userCache = new Map();
     let endTimer;
     const onSpeechStart = (userId) => {
         activeUsers.add(userId);
@@ -38,6 +40,17 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                 }
             });
             userConverters.set(userId, { opusDecoder, resampler });
+            opusStream.once('end', () => {
+                log.debug(`User ${userId} stopped speaking`);
+                activeUsers.delete(userId);
+                if (activeUsers.size === 0) {
+                    endTimer = setTimeout(() => {
+                        // retain converters for reuse; just clear pending batches
+                        activeUsers.clear();
+                        endTimer = null;
+                    }, DEBOUNCE_MS);
+                }
+            });
         }
     };
     voiceConnection.receiver.speaking.on('start', onSpeechStart);
@@ -45,19 +58,15 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     // Return a cleanup function to remove listeners and destroy converters
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
-        for (const { resampler, opusDecoder } of userConverters.values()) {
-            try {
-                resampler.unpipe();
-                resampler.destroy();
-            } catch { };
-            try {
-                opusDecoder.unpipe();
-                opusDecoder.destroy();
-            } catch { };
+        for (const { converter, opusDecoder } of userConverters.values()) {
+            try { converter.stdin.end(); } catch { };
+            try { converter.kill(); } catch { };
+            try { opusDecoder.destroy(); } catch { };
         }
         userConverters.clear();
+        userCache.clear();
         activeUsers.clear();
         if (endTimer) { clearTimeout(endTimer); endTimer = null; }
-        log.debug('Audio input cleanup complete');
+        log.debug('Cleaned up audio input handlers and converters');
     };
 }
