@@ -28,7 +28,8 @@ export function createAudioPlayback(audioPlayer) {
 
 
     function reset() {
-        //pcmCache = Buffer.alloc(0);
+        playbackStream = null;
+        pcmCache = Buffer.alloc(0);
     }
 
     return { handleAudio, reset };
