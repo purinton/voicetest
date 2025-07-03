@@ -39,7 +39,7 @@ export async function createOpenAIWebSocket({ client,
     }
     ws.skipResponseCreate = new Set();
     ws.on('open', () => {
-        log.info('Connected to OpenAI Realtime WebSocket');
+        log.debug('Connected to OpenAI Realtime WebSocket');
         ws.send(JSON.stringify({ type: 'session.update', session: sessionConfig }));
         if (client && typeof client.sendOpenAIMessage === 'function') {
             client.sendOpenAIMessage('Hello');
@@ -104,7 +104,7 @@ export async function createOpenAIWebSocket({ client,
             });
             if (result && result.handled) {
                 if (result.restart && typeof onRestart === 'function') {
-                    log.info('Restarting OpenAI WebSocket session...');
+                    log.debug('Restarting OpenAI WebSocket session...');
                     ws.close();
                     onRestart();
                     return;
@@ -128,10 +128,10 @@ export async function createOpenAIWebSocket({ client,
         }
     }, 50000);
     ws.on('close', () => {
-        log.info('OpenAI WebSocket closed');
+        log.debug('OpenAI WebSocket closed');
         clearInterval(heartbeatInterval);
         if (typeof onRestart === 'function') {
-            log.info('Attempting to auto-restart OpenAI WebSocket after close');
+            log.debug('Attempting to auto-restart OpenAI WebSocket after close');
             onRestart();
         }
     });

@@ -14,6 +14,6 @@ export function setupVoiceConnection({ client, guildId, voiceChannelId, log }) {
     });
     const audioPlayer = createAudioPlayer();
     voiceConnection.subscribe(audioPlayer);
-    log.info('Joined voice channel');
+    log.debug('Joined voice channel');
     return { voiceConnection, audioPlayer };
 }

@@ -20,7 +20,7 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
             await playBeepFn();
         }
         for (const fc of functionCalls) {
-            log.info(`AI invoked function '${fc.name}' with arguments:`, fc.arguments);
+            log.debug(`AI invoked function '${fc.name}' with arguments:`, fc.arguments);
             if (client && channelId) {
                 try {
                     const channel = await client.channels.fetch(channelId);

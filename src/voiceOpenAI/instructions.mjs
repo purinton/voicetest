@@ -6,7 +6,7 @@ export function loadInstructions(log) {
     try {
         const instructionsPath = path.resolve(process.cwd(), 'instructions.txt');
         instructions = fs.readFileSync(instructionsPath, 'utf8');
-        log.info('Loaded instructions.txt for OpenAI system prompt');
+        log.debug('Loaded instructions.txt for OpenAI system prompt');
     } catch (err) {
         log.warn('Could not load instructions.txt:', err);
     }

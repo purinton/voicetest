@@ -1,3 +1,3 @@
 export default async function ({ log }) {
-  log.info('Received no_response, skipping response');
+  log.debug('Received no_response, skipping response');
 }
