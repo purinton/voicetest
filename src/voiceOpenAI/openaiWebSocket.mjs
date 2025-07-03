@@ -119,7 +119,7 @@ export async function createOpenAIWebSocket({ client,
         }
         if (msg && msg.type === 'response.audio.delta') {
             handleAudioDelta({ msg, playback, log });
-        } else if (msg && msg.type === 'response.audio.done') {
+        } else if (msg && msg.type === 'response.done') {
             handleAudioDone({ playback, log });
         }
     });
