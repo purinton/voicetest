@@ -55,12 +55,13 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     };
     voiceConnection.receiver.speaking.on('start', onSpeechStart);
 
+    // Return a cleanup function to remove listeners and destroy converters
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
-        for (const { opusDecoder, resampler } of userConverters.values()) {
-            try { opusDecoder.destroy(); } catch { }
-            try { resampler.end && resampler.end(); } catch { }
-            try { resampler.destroy && resampler.destroy(); } catch { }
+        for (const { converter, opusDecoder } of userConverters.values()) {
+            try { converter.stdin.end(); } catch { };
+            try { converter.kill(); } catch { };
+            try { opusDecoder.destroy(); } catch { };
         }
         userConverters.clear();
         userCache.clear();
