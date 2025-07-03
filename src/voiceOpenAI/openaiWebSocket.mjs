@@ -21,6 +21,9 @@ export async function createOpenAIWebSocket({ client,
     mcpTools,
     mcpClients
 }) {
+    if (!openAIApiKey) {
+        throw new Error('openAIApiKey is required');
+    }
     const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
     const toolsForOpenAI = (allTools || []).map(tool => {
         return {
