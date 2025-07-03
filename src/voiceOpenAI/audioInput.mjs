@@ -14,6 +14,24 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const waitingQueue = [];
     const userBuffers = new Map(); // userId -> Buffer[]
 
+    // Send a speaker label as text to OpenAI
+    function sendSpeakerLabel(userId) {
+        if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
+            const event = {
+                event_id: `event_${Date.now()}`,
+                type: 'conversation.item.create',
+                item: {
+                    id: `msg_${Date.now()}`,
+                    type: 'message',
+                    role: 'user',
+                    content: [{ type: 'input_text', text: `<@${userId}>` }]
+                }
+            };
+            openAIWS.send(JSON.stringify(event));
+            openAIWS._lastSpeakerId = userId;
+        }
+    }
+    
     function sendAudioFrame(frame) {
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
             const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
@@ -37,10 +55,30 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
 
     const onSpeechStart = (userId) => {
         log.debug(`User ${userId} started speaking`);
+        // Notify OpenAI of speaker change by sending a text message
+        function sendSpeakerLabel(id) {
+            if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
+                const event = {
+                    event_id: `event_${Date.now()}`,
+                    type: 'conversation.item.create',
+                    item: {
+                        id: `msg_${Date.now()}`,
+                        type: 'message',
+                        role: 'user',
+                        content: [{ type: 'input_text', text: `<@${id}>` }]
+                    }
+                };
+                openAIWS.send(JSON.stringify(event));
+            }
+        }
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 100 },
         });
         if (!userConverters.has(userId)) {
+            // when acquiring lock, signal speaker label
+            if (currentSpeakerId === null) {
+                sendSpeakerLabel(userId);
+            }
             const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
             opusStream.pipe(opusDecoder);
             const resampler = new Resampler({ inRate: 48000, outRate: 24000, inChannels: 2, outChannels: 1 });
@@ -52,8 +90,11 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                     const frame = cache.subarray(0, PCM_FRAME_SIZE_BYTES_24);
                     cache = cache.subarray(PCM_FRAME_SIZE_BYTES_24);
                     if (currentSpeakerId === null) {
-                        // No one is speaking, this user gets the lock
+                        // No one is speaking: this user gets the lock
                         currentSpeakerId = userId;
+                        // Notify OpenAI of speaker and track current speaker
+                        sendSpeakerLabel(userId);
+                        openAIWS.currentSpeakerId = userId;
                         sendAudioFrame(frame);
                     } else if (currentSpeakerId === userId) {
                         // This user holds the lock, send audio

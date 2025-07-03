@@ -67,7 +67,13 @@ export async function createOpenAIWebSocket({ client,
             try {
                 const channel = await client.channels.fetch(channelId);
                 if (channel && channel.send) {
-                    await channel.send(`User: ${msg.transcript}`);
+                    // Tag the last speaker instead of generic 'User:'
+                    const speakerId = ws._lastSpeakerId || null;
+                    const label = speakerId ? `<@${speakerId}>` : 'User';
+                    await channel.send({
+                        content: `${label}: ${msg.transcript}`,
+                        allowedMentions: { parse: [] }
+                    });
                 }
             } catch (err) {
                 log.error('Failed to send user transcription to Discord channel:', err);
