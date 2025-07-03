@@ -1,4 +1,5 @@
 import WebSocket from 'ws';
+import { wrapWsSend } from './openaiWebSocket/wsSendWrapper.mjs';
 import { getSessionConfig } from './openaiWebSocket/sessionConfig.mjs';
 import { handleFunctionCall } from './openaiWebSocket/messageHandlers.mjs';
 import { handleAudioDelta, handleAudioDone } from './openaiWebSocket/audioHandlers.mjs';
@@ -35,6 +36,8 @@ export async function createOpenAIWebSocket({ client,
     });
     const sessionConfig = getSessionConfig({ instructions, voice, tools: toolsForOpenAI });
     const ws = new WebSocket(url, { headers: { Authorization: `Bearer ${openAIApiKey}`, 'OpenAI-Beta': 'realtime=v1' } });
+    // wrap send to honor skipResponseCreate for no_response calls
+    wrapWsSend(ws, ws.skipResponseCreate, log);
     if (client) {
         attachSendMessageToClient(client, ws, log);
     } else {
