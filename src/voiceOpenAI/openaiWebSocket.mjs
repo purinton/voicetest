@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 import { getSessionConfig } from './openaiWebSocket/sessionConfig.mjs';
 import { handleFunctionCall } from './openaiWebSocket/messageHandlers.mjs';
-import { handleAudioDelta } from './openaiWebSocket/audioHandlers.mjs';
+import { handleAudioDelta, handleAudioDone } from './openaiWebSocket/audioHandlers.mjs';
 import { playBeep } from './beep.mjs';
 
 /**

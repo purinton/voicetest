@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { handleAudioDelta } from '../../../src/voiceOpenAI/openaiWebSocket/audioHandlers.mjs';
+import { handleAudioDelta, handleAudioDone } from '../../../src/voiceOpenAI/openaiWebSocket/audioHandlers.mjs';
 
 describe('audioHandlers', () => {
     it('handleAudioDelta decodes and passes audio', () => {
