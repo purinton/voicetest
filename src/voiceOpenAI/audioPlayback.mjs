@@ -32,29 +32,29 @@ export function createAudioPlayback(audioPlayer, log) {
 
 
     function reset() {
-        // if (playbackStream) {
-        //     playbackStream.end();
-        //     playbackStream.destroy();
-        //     playbackStream = undefined;
-        // }
-        // if (resampler) {
-        //     if (typeof resampler.unpipe === 'function') resampler.unpipe();
-        //     if (typeof resampler.destroy === 'function') resampler.destroy();
-        //     resampler = undefined;
-        // }
-        // if (opusEncoder) {
-        //     if (typeof opusEncoder.unpipe === 'function') opusEncoder.unpipe();
-        //     if (typeof opusEncoder.destroy === 'function') opusEncoder.destroy();
-        //     opusEncoder = undefined;
-        // }
-        // if (resource) {
-        //     resource = undefined;
-        // }
-        // pcmCache = Buffer.alloc(0);
-        // if (audioPlayer) {
-        //     audioPlayer.stop();
-        // }
-        // log.debug('Audio playback reset complete');
+        if (playbackStream) {
+            playbackStream.end();
+            playbackStream.destroy();
+            playbackStream = undefined;
+        }
+        if (resampler) {
+            if (typeof resampler.unpipe === 'function') resampler.unpipe();
+            if (typeof resampler.destroy === 'function') resampler.destroy();
+            resampler = undefined;
+        }
+        if (opusEncoder) {
+            if (typeof opusEncoder.unpipe === 'function') opusEncoder.unpipe();
+            if (typeof opusEncoder.destroy === 'function') opusEncoder.destroy();
+            opusEncoder = undefined;
+        }
+        if (resource) {
+            resource = undefined;
+        }
+        pcmCache = Buffer.alloc(0);
+        if (audioPlayer) {
+            audioPlayer.stop();
+        }
+        log.debug('Audio playback reset complete');
     }
 
     return { handleAudio, reset };
