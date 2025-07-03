@@ -5,7 +5,7 @@ import { createAudioResource, StreamType } from '@discordjs/voice';
 
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
 
-export function createAudioPlayback(audioPlayer) {
+export function createAudioPlayback(audioPlayer, log) {
     let pcmCache = Buffer.alloc(0);
     let playbackStream;
     let resampler;
