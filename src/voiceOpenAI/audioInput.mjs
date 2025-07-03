@@ -55,22 +55,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
 
     const onSpeechStart = (userId) => {
         log.debug(`User ${userId} started speaking`);
-        // Notify OpenAI of speaker change by sending a text message
-        function sendSpeakerLabel(id) {
-            if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-                const event = {
-                    event_id: `event_${Date.now()}`,
-                    type: 'conversation.item.create',
-                    item: {
-                        id: `msg_${Date.now()}`,
-                        type: 'message',
-                        role: 'user',
-                        content: [{ type: 'input_text', text: `<@${id}>` }]
-                    }
-                };
-                openAIWS.send(JSON.stringify(event));
-            }
-        }
+        // Always use the top-level sendSpeakerLabel, which sets _lastSpeakerId
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 100 },
         });
