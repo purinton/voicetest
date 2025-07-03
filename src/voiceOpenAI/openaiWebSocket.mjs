@@ -133,12 +133,13 @@ export async function createOpenAIWebSocket({ client,
             ws.ping();
         }
     }, 50000);
+    const RECONNECT_DELAY_MS = 1000;
     ws.on('close', () => {
         log.debug('OpenAI WebSocket closed');
         clearInterval(heartbeatInterval);
         if (typeof onRestart === 'function') {
-            log.debug('Attempting to auto-restart OpenAI WebSocket after close');
-            onRestart();
+            log.debug(`Reconnecting in ${RECONNECT_DELAY_MS}ms`);
+            setTimeout(() => onRestart(), RECONNECT_DELAY_MS);
         }
     });
     return ws;
