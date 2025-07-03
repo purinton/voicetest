@@ -5,3 +5,8 @@ export function handleAudioDelta({ msg, playback, log }) {
         playback.handleAudio(audioBuffer);
     }
 }
+
+export function handleAudioDone({ playback, log }) {
+    log.debug('OpenAI audio stream done, resetting playback');
+    playback.reset();
+}
