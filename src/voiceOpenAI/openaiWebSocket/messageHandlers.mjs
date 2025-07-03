@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 
-export async function handleFunctionCall({ msg, ws, log, client, channelId, playBeepFn, restart, allMcpTools, mcpClients }) {
+export async function handleFunctionCall({ msg, ws, log, client, channelId, playBeepFn, restart, mcpTools, mcpClients }) {
     let output = msg.response && msg.response.output;
     if (typeof output === 'string') {
         try { output = JSON.parse(output); } catch (e) { log.error('Failed to parse msg.response.output as JSON:', output); return { handled: false, skipResponse: true, restart: false }; }
@@ -33,7 +33,7 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                 }
             }
             // Route MCP tool calls
-            const mcpTool = allMcpTools && allMcpTools.find(t => t.name === fc.name && t.mcp_tool);
+            const mcpTool = mcpTools && mcpTools.find(t => t.name === fc.name && t.mcp_tool);
             if (mcpTool && mcpClients && mcpClients[mcpTool.mcp_label]) {
                 try {
                     let toolArgs = {};
