@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 import 'dotenv/config';
 import mcpClient from '@purinton/mcp-client';
 import { createDiscord } from '@purinton/discord';
@@ -6,6 +7,13 @@ import { log, fs, path, registerHandlers, registerSignals } from '@purinton/comm
 
 registerHandlers({ log });
 registerSignals({ log });
+
+const requiredEnv = ['DISCORD_TOKEN', 'GUILD_ID', 'VOICE_CHANNEL_ID', 'OPENAI_API_KEY'];
+const missingEnv = requiredEnv.filter((key) => !process.env[key]);
+if (missingEnv.length > 0) {
+    log.error(`Missing required environment variables: ${missingEnv.join(', ')}`);
+    process.exit(1);
+}
 
 const voice = 'ash';
 const packageJson = JSON.parse(fs.readFileSync(path(import.meta, 'package.json')), 'utf8');
