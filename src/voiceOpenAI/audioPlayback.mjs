@@ -28,14 +28,9 @@ export function createAudioPlayback(audioPlayer) {
 
 
     function reset() {
-        if (playbackStream) {
-            playbackStream.end();
-            playbackStream.on('finish', () => {
-                playbackStream = undefined;
-            });
-        }
-        pcmCache = Buffer.alloc(0);
+        //pcmCache = Buffer.alloc(0);
     }
 
     return { handleAudio, reset };
 }
+
