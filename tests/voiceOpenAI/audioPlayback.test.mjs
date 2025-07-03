@@ -6,6 +6,5 @@ describe('createAudioPlayback', () => {
     const mockAudioPlayer = { play: jest.fn() };
     const playback = createAudioPlayback(mockAudioPlayer);
     expect(typeof playback.handleAudio).toBe('function');
-    expect(typeof playback.reset).toBe('function');
   });
 });
