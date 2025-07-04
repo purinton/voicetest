@@ -15,7 +15,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     // Send a speaker label as text to OpenAI
     function sendSpeakerLabel(userId) {
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-            openAIWS.sendOpenAIMessage(`Russell said:`);
+            openAIWS.sendOpenAIMessage(`I am Russell.`);
             openAIWS._lastSpeakerId = userId;
             log.debug(`Sent speaker label for user ${userId}`);
         } else {
