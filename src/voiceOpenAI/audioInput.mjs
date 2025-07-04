@@ -100,7 +100,7 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
                 }
             });
             userConverters.set(userId, { opusDecoder, resampler });
-            opusStream.once('end', () => {
+            opusStream.once('close', () => {
                 log.debug(`User ${userId} stopped speaking`);
                 if (currentSpeakerId === userId) {
                     // Speaker finished, check for next in queue
