@@ -137,7 +137,6 @@ export async function createOpenAIWebSocket({ client,
             ws.ping();
         }
     }, 50000);
-    // Improved reconnect logic: restart immediately if last reconnect > 1s ago, else wait 1s
     const RECONNECT_DELAY_MS = 1000;
     let lastReconnectTime = 0;
     ws.on('close', () => {
@@ -180,7 +179,7 @@ export function attachSendMessageToClient(client, ws, log) {
         const event = {
             event_id: `event_${Date.now()}`,
             type: 'conversation.item.create',
-            previous_item_id,
+            //previous_item_id,
             item: {
                 id: `msg_${Date.now()}`,
                 type: 'message',
