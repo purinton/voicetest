@@ -55,7 +55,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
         log.debug(`User ${userId} started speaking`);
         // Always use the top-level sendSpeakerLabel, which sets _lastSpeakerId
         const opusStream = voiceConnection.receiver.subscribe(userId, {
-            end: { behavior: 'silence', duration: 500 },
+            end: { behavior: 'silence', duration: 100 },
         });
         if (!userConverters.has(userId)) {
             // when acquiring lock, signal speaker label
