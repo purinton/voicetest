@@ -187,7 +187,7 @@ export function attachSendMessageToClient(client, ws, log) {
         log.warn('attachSendMessageToClient called with undefined client');
         return;
     }
-    client.sendOpenAIMessage = async function (text) {
+    client.sendOpenAIMessage = async function (text, createResponse = true) {
         if (!ws || ws.readyState !== ws.OPEN) {
             log.error('OpenAI WebSocket is not open');
             return;
@@ -209,7 +209,9 @@ export function attachSendMessageToClient(client, ws, log) {
             }
         };
         await ws.send(JSON.stringify(event));
-        ws.send(JSON.stringify({ type: 'response.create' }));
+        if (createResponse) {
+            ws.send(JSON.stringify({ type: 'response.create' }));
+        }
         log.debug('[OpenAI WS] Sent conversation.item.create, response.create');
     };
     ws.sendOpenAIMessage = client.sendOpenAIMessage;
