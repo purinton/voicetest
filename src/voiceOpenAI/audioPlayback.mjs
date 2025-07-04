@@ -4,6 +4,7 @@ import { Resampler } from '@purinton/resampler';
 import { createAudioResource, StreamType } from '@discordjs/voice';
 
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
+const JITTER_BUFFER_FRAMES = 5; // 100ms jitter (5 * 20ms frames)
 
 export function createAudioPlayback(audioPlayer) {
     let pcmCache = Buffer.alloc(0);
@@ -11,7 +12,12 @@ export function createAudioPlayback(audioPlayer) {
     function handleAudio(audioBuffer) {
         if (!audioPlayer) return;
         pcmCache = Buffer.concat([pcmCache, audioBuffer]);
+        // Initialize playback once jitter buffer is filled
         if (!playbackStream) {
+            if (pcmCache.length < PCM_FRAME_SIZE_BYTES * JITTER_BUFFER_FRAMES) {
+                // Not enough buffered for jitter, wait
+                return;
+            }
             const resampler = new Resampler({ inRate: 24000, outRate: 48000, inChannels: 1, outChannels: 1, filterWindow: 8 });
             const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
             playbackStream = new PassThrough();
