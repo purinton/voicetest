@@ -69,7 +69,8 @@ async function main() {
                 mcpTools: allMcpTools,
                 localTools: allLocalTools,
                 allTools
-            }
+            },
+            intents: { GuildMembers: true }
         });
     } catch (err) {
         log.error('Fatal error during startup:', err);
