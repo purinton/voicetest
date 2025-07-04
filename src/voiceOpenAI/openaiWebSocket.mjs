@@ -197,4 +197,5 @@ export function attachSendMessageToClient(client, ws, log) {
         ws.send(JSON.stringify({ type: 'response.create' }));
         log.debug('[OpenAI WS] Sent conversation.item.create, response.create');
     };
+    ws.sendOpenAIMessage = client.sendOpenAIMessage;
 }
