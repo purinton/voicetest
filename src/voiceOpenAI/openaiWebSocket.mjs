@@ -109,6 +109,21 @@ export async function createOpenAIWebSocket({ client,
             }
         }
         if (msg.type === 'response.done') {
+            let output = msg.response && msg.response.output;
+            if (typeof output === 'string') {
+                try {
+                    output = JSON.parse(output);
+                } catch (e) {
+                    log.error('Failed to parse msg.response.output as JSON:', output);
+                    return { handled: false, skipResponse: true, restart: false };
+                }
+            }
+            if (output && Array.isArray(output) && output.length > 0) {
+                const lastItem = output[output.length - 1];
+                if (lastItem && lastItem.id) {
+                    ws.previous_item_id = lastItem.id;
+                }
+            }
             const result = await handleFunctionCall({
                 msg, ws, log, sessionConfig, client, channelId, playBeepFn: () => playBeep(audioPlayer, log),
                 mcpTools, mcpClients // pass to handler
@@ -171,7 +186,7 @@ export function attachSendMessageToClient(client, ws, log) {
         log.warn('attachSendMessageToClient called with undefined client');
         return;
     }
-    client.sendOpenAIMessage = async function (text, previous_item_id = null) {
+    client.sendOpenAIMessage = async function (text) {
         if (!ws || ws.readyState !== ws.OPEN) {
             log.error('OpenAI WebSocket is not open');
             return;
@@ -179,7 +194,7 @@ export function attachSendMessageToClient(client, ws, log) {
         const event = {
             event_id: `event_${Date.now()}`,
             type: 'conversation.item.create',
-            //previous_item_id,
+            previous_item_id: ws.previous_item_id || null,
             item: {
                 id: `msg_${Date.now()}`,
                 type: 'message',
