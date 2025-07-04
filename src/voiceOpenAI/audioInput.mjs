@@ -3,21 +3,38 @@ import prism from 'prism-media';
 import { Resampler } from '@purinton/resampler';
 
 
-export function setupAudioInput({ voiceConnection, openAIWS, log }) {
+export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
     const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
     const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
 
-    // New: Speaker lock and queue
     let currentSpeakerId = null;
     const waitingQueue = [];
     const userBuffers = new Map(); // userId -> Buffer[]
 
-    // Send a speaker label as text to OpenAI
-    function sendSpeakerLabel(userId) {
+    async function sendSpeakerLabel(userId) {
+        let speakerName = 'Unknown User';
+        try {
+            if (voiceConnection && voiceConnection.joinConfig && voiceConnection.joinConfig.guildId && client) {
+                const guild = await client.guilds.fetch(voiceConnection.joinConfig.guildId);
+                if (guild) {
+                    const member = await guild.members.fetch(userId).catch(() => null);
+                    if (member) {
+                        speakerName = member.nickname || member.displayName || member.user?.username || 'Unknown User';
+                    } else if (client.users) {
+                        const user = await client.users.fetch(userId).catch(() => null);
+                        if (user) {
+                            speakerName = user.displayName || user.username || 'Unknown User';
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            log.warn('Could not resolve Discord speaker name:', err);
+        }
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-            openAIWS.sendOpenAIMessage(`My name is Russell.`);
+            openAIWS.sendOpenAIMessage(`My name is ${speakerName}.`);
             openAIWS._lastSpeakerId = userId;
-            log.debug(`Sent speaker label for user ${userId}`);
+            log.debug(`Sent speaker label for user ${userId} as ${speakerName}`);
         } else {
             log.warn('OpenAI WS not open, cannot send speaker label');
         }
@@ -53,7 +70,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
         if (!userConverters.has(userId)) {
             // when acquiring lock, signal speaker label
             if (currentSpeakerId === null) {
-                sendSpeakerLabel(userId);
+                sendSpeakerLabel(userId); // now async, but fire and forget
             }
             const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
             opusStream.pipe(opusDecoder);
@@ -69,7 +86,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                         // No one is speaking: this user gets the lock
                         currentSpeakerId = userId;
                         // Notify OpenAI of speaker and track current speaker
-                        sendSpeakerLabel(userId);
+                        sendSpeakerLabel(userId); // now async, but fire and forget
                         openAIWS.currentSpeakerId = userId;
                         sendAudioFrame(frame);
                     } else if (currentSpeakerId === userId) {

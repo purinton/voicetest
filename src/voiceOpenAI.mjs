@@ -28,7 +28,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
             mcpTools,
             mcpClients
         });
-        audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
+        audioInputCleanup = setupAudioInput({ client, voiceConnection, openAIWS, log });
     }
 
     openAIWS = await createOpenAIWebSocket({
@@ -44,7 +44,7 @@ export async function setupVoiceOpenAI({ client, guildId, voiceChannelId, openAI
         mcpTools,
         mcpClients
     });
-    audioInputCleanup = setupAudioInput({ voiceConnection, openAIWS, log });
+    audioInputCleanup = setupAudioInput({ client, voiceConnection, openAIWS, log });
 
     return async () => {
         if (openAIWS && openAIWS.readyState === 1) openAIWS.close();
