@@ -63,7 +63,6 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
 
     const onSpeechStart = (userId) => {
         log.debug(`User ${userId} started speaking`);
-        // Always use the top-level sendSpeakerLabel, which sets _lastSpeakerId
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 500 },
         });

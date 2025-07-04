@@ -156,6 +156,7 @@ export async function createOpenAIWebSocket({ client,
     let lastReconnectTime = 0;
     ws.on('close', () => {
         log.debug('OpenAI WebSocket closed');
+        _lastSpeakerId = null;
         clearInterval(heartbeatInterval);
         if (typeof onRestart === 'function') {
             const now = Date.now();
