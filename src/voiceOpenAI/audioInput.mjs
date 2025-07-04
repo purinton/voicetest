@@ -18,6 +18,8 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             openAIWS.sendOpenAIMessage(`User ID <@${userId}> is speaking.`);
             openAIWS._lastSpeakerId = userId;
             log.debug(`Sent speaker label for user ${userId}`);
+        } else {
+            log.warn('OpenAI WS not open, cannot send speaker label');
         }
     }
 
