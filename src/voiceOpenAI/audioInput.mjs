@@ -27,6 +27,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             };
             openAIWS.send(JSON.stringify(event));
             openAIWS._lastSpeakerId = userId;
+            log.debug(`Sent speaker label for user ${userId}`);
         }
     }
 
