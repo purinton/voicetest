@@ -2,12 +2,10 @@ import WebSocket from 'ws';
 import prism from 'prism-media';
 import { Resampler } from '@purinton/resampler';
 
+
 export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
-    const DEBOUNCE_MS = 100;
     const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
-    const userCache = new Map();
-    let endTimer;
 
     // New: Speaker lock and queue
     let currentSpeakerId = null;
@@ -31,7 +29,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
             openAIWS._lastSpeakerId = userId;
         }
     }
-    
+
     function sendAudioFrame(frame) {
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
             const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
@@ -115,17 +113,16 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
     // Return a cleanup function to remove listeners and destroy converters
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
-        for (const { converter, opusDecoder } of userConverters.values()) {
-            try { converter?.stdin?.end(); } catch { };
-            try { converter?.kill?.(); } catch { };
+        for (const { resampler, opusDecoder } of userConverters.values()) {
+            try { resampler?.unpipe?.(); } catch { };
+            try { resampler?.destroy?.(); } catch { };
+            try { opusDecoder?.unpipe?.(); } catch { };
             try { opusDecoder.destroy(); } catch { };
         }
         userConverters.clear();
-        userCache.clear();
         currentSpeakerId = null;
         waitingQueue.length = 0;
         userBuffers.clear();
-        if (endTimer) { clearTimeout(endTimer); endTimer = null; }
         log.debug('Cleaned up audio input handlers and converters');
     };
 }
