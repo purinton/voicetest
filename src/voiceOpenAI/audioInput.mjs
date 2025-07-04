@@ -22,7 +22,7 @@ export function setupAudioInput({ voiceConnection, openAIWS, log }) {
                     id: `msg_${Date.now()}`,
                     type: 'message',
                     role: 'user',
-                    content: [{ type: 'input_text', text: `<@${userId}>` }]
+                    content: [{ type: 'input_text', text: `Russell is speaking.` }]
                 }
             };
             openAIWS.send(JSON.stringify(event));
