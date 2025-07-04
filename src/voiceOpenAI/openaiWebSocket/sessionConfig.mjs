@@ -8,8 +8,7 @@ export function getSessionConfig({ instructions, voice, tools }) {
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',
         turn_detection: {
-            type: 'semantic_vad',
-            eagerness: 'high',
+            type: 'server_vad',
             create_response: true,
             interrupt_response: true
         },
