@@ -17,7 +17,6 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
         const hasFunctionCall = functionCalls.length > 0;
         const isNoResponse = functionCalls.some(item => item.name === 'no_response');
 
-        // --- Beep interval logic start ---
         let beepInterval = null;
         let stopped = false;
         if (hasFunctionCall && !isNoResponse && typeof playBeepFn === 'function') {
@@ -27,7 +26,6 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                 if (!stopped) playBeepFn();
             }, 1000);
         }
-        // --- Beep interval logic end ---
 
         try {
             for (const fc of functionCalls) {
