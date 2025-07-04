@@ -9,6 +9,7 @@ export function getSessionConfig({ instructions, voice, tools }) {
         output_audio_format: 'pcm16',
         turn_detection: {
             type: 'semantic_vad',
+            eagerness: 'high',
             create_response: true,
             interrupt_response: true
         },
