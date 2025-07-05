@@ -9,8 +9,9 @@ describe('audioHandlers', () => {
         expect(mockPlayback.handleAudio).toHaveBeenCalled();
     });
     it('handleAudioDone calls reset', () => {
-        const mockPlayback = { reset: jest.fn() };
+        const mockPlayback = { handleAudio: jest.fn(), reset: jest.fn() };
         handleAudioDone({ playback: mockPlayback, log: { debug: jest.fn() } });
+        expect(mockPlayback.handleAudio).toHaveBeenCalled();
         expect(mockPlayback.reset).toHaveBeenCalled();
     });
 });
