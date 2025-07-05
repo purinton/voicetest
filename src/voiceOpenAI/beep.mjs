@@ -3,12 +3,7 @@ import { PassThrough } from 'stream';
 import { createAudioResource, StreamType, AudioPlayer } from '@discordjs/voice';
 import prism from 'prism-media';
 
-// Generate PCM buffer for 100ms, 432Hz, 50% volume, mono, 16-bit, 48kHz
-export function generateBeepPCM() {
-    const durationSec = 0.1;
-    const sampleRate = 48000;
-    const freq = 432;
-    const volume = 0.5;
+export function generateBeepPCM({ sampleRate = 48000, durationSec = 0.1, freq = 432, volume = 0.5 } = {}) {
     const samples = Math.floor(durationSec * sampleRate);
     const buffer = Buffer.alloc(samples * 2); // 16-bit
     for (let i = 0; i < samples; i++) {
@@ -20,9 +15,9 @@ export function generateBeepPCM() {
 }
 
 // Play beep to Discord using the audio player
-export function playBeep(audioPlayer, log) {
+export function playBeep(audioPlayer, log, { sampleRate = 48000, durationSec = 0.1, freq = 432, volume = 0.5 } = {}) {
     if (!audioPlayer) return;
-    const beepPCM = generateBeepPCM();
+    const beepPCM = generateBeepPCM({ sampleRate, durationSec, freq, volume });
     const stream = new PassThrough();
     stream.end(beepPCM);
     const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
