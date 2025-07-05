@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 import { getSessionConfig } from './openaiWebSocket/sessionConfig.mjs';
 import { handleFunctionCall } from './openaiWebSocket/messageHandlers.mjs';
-import { handleAudioDelta } from './openaiWebSocket/audioHandlers.mjs';
+import { handleAudioDelta, handleAudioDone } from './openaiWebSocket/audioHandlers.mjs';
 import { playBeep } from './beep.mjs';
 
 /**
@@ -141,7 +141,9 @@ export async function createOpenAIWebSocket({ client,
             }
         }
         if (msg && msg.type === 'response.audio.delta') {
-            handleAudioDelta({ msg, playback });
+            handleAudioDelta({ msg, playback, log });
+        } else if (msg && msg.type === 'response.done') {
+            handleAudioDone({ playback, log });
         }
     });
     ws.on('error', (err) => log.error('OpenAI WebSocket error:', err));
