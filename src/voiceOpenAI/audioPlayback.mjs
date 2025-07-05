@@ -42,11 +42,9 @@ export function createAudioPlayback(audioPlayer) {
                 pcmCache = Buffer.alloc(0);
             }
             playbackStream.end();
-            playbackStream.on('finish', () => {
-                playbackStream = null;
-                pcmCache = Buffer.alloc(0);
-            });
         }
+        playbackStream = null;
+        pcmCache = Buffer.alloc(0);
     }
 
     return { handleAudio, reset };
