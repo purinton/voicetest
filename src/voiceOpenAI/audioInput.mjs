@@ -66,6 +66,19 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 500 },
         });
+        opusStream.once('end', () => {
+            log.debug(`User ${userId} stopped speaking`);
+            if (currentSpeakerId === userId) {
+                if (waitingQueue.length > 0) {
+                    const nextUserId = waitingQueue.shift();
+                    currentSpeakerId = nextUserId;
+                    processBufferedAudio(nextUserId);
+                } else {
+                    currentSpeakerId = null;
+                }
+            }
+            userBuffers.set(userId, []);
+        });
         if (!userConverters.has(userId)) {
             // when acquiring lock, signal speaker label
             if (currentSpeakerId === null) {
@@ -100,21 +113,6 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
                 }
             });
             userConverters.set(userId, { opusDecoder, resampler });
-            opusStream.once('close', () => {
-                log.debug(`User ${userId} stopped speaking`);
-                if (currentSpeakerId === userId) {
-                    // Speaker finished, check for next in queue
-                    if (waitingQueue.length > 0) {
-                        const nextUserId = waitingQueue.shift();
-                        currentSpeakerId = nextUserId;
-                        processBufferedAudio(nextUserId);
-                    } else {
-                        currentSpeakerId = null;
-                    }
-                }
-                // Clean up buffer for this user
-                userBuffers.set(userId, []);
-            });
         }
     };
     voiceConnection.receiver.speaking.on('start', onSpeechStart);
