@@ -35,7 +35,7 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
             log.warn('Could not resolve Discord speaker name:', err);
         }
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-            openAIWS.sendOpenAIMessage(`My name is ${speakerName}.`, false);
+            openAIWS.sendOpenAIMessage(`Participant '${speakerName}' started speaking:`, false);
             log.debug(`Sent speaker label for user ${userId} as ${speakerName}`);
         } else {
             openAIWS.lastSpeakerId = null;
