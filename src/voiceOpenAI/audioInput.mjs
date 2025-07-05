@@ -8,13 +8,13 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
     const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
 
     let currentSpeakerId = null;
-    let lastSpeakerId = null;
+    openAIWS.lastSpeakerId = null;
     const waitingQueue = [];
     const userBuffers = new Map(); // userId -> Buffer[]
 
     async function sendSpeakerLabel(userId) {
-        if (userId === lastSpeakerId) return;
-        lastSpeakerId = userId;
+        if (userId === openAIWS.lastSpeakerId) return;
+        openAIWS.lastSpeakerId = userId;
         let speakerName = 'Unknown User';
         try {
             if (voiceConnection && voiceConnection.joinConfig && voiceConnection.joinConfig.guildId && client) {
@@ -36,7 +36,6 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
         }
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
             openAIWS.sendOpenAIMessage(`My name is ${speakerName}.`, false);
-            openAIWS._lastSpeakerId = userId;
             log.debug(`Sent speaker label for user ${userId} as ${speakerName}`);
         } else {
             log.warn('OpenAI WS not open, cannot send speaker label');
