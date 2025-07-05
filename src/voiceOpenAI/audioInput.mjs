@@ -2,6 +2,8 @@ import WebSocket from 'ws';
 import prism from 'prism-media';
 import { Resampler } from '@purinton/resampler';
 
+// Add max buffer constant to control WS backpressure
+const MAX_WS_BUFFERED_AMOUNT = 5 * 1024 * 1024; // 5MB
 
 export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
     const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
@@ -45,12 +47,14 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
 
     function sendAudioFrame(frame) {
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-            const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
-            try {
-                openAIWS.send(payload);
-            } catch (err) {
-                log.error('Error sending audio to OpenAI WS:', err);
+            if (openAIWS.bufferedAmount > MAX_WS_BUFFERED_AMOUNT) {
+                log.warn('WebSocket buffer high, dropping audio frame');
+                return;
             }
+            const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
+            openAIWS.send(payload, err => {
+                if (err) log.error('Error sending audio to OpenAI WS:', err);
+            });
         } else {
             log.warn('OpenAI WS not open, skipping audio frame');
         }
