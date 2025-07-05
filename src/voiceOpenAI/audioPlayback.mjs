@@ -14,7 +14,7 @@ export function createAudioPlayback(audioPlayer) {
         pcmCache = Buffer.concat([pcmCache, audioBuffer]);
         if (!playbackStream) {
             if (pcmCache.length < PCM_FRAME_SIZE_BYTES * JITTER_BUFFER_FRAMES) return;
-            const resampler = new Resampler({ inRate: 24000, outRate: 48000, inChannels: 1, outChannels: 1, filterWindow: 8, volume: 0.5 });
+            const resampler = new Resampler({ inRate: 24000, outRate: 48000, inChannels: 1, outChannels: 1, filterWindow: 8, volume: 0.25 });
             const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
             playbackStream = new PassThrough();
             playbackStream.on('finish', () => {
