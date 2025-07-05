@@ -36,7 +36,7 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                         const channel = await client.channels.fetch(channelId);
                         if (channel && channel.send) {
                             const formattedName = fc.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                            await channel.send(`✅ **${formattedName}**`);
+                            channel.send(`✅ **${formattedName}**`);
                         }
                     } catch (err) {
                         log.error('Failed to send function call message to Discord channel:', err);

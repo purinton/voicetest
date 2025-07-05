@@ -70,7 +70,7 @@ export async function createOpenAIWebSocket({ client,
                     // Tag the last speaker instead of generic 'User:'
                     const speakerId = ws.lastSpeakerId || null;
                     const label = speakerId ? `<@${speakerId}>` : 'User';
-                    await channel.send({
+                    channel.send({
                         content: `${label}: ${msg.transcript}`,
                         allowedMentions: { parse: [] }
                     });
@@ -89,7 +89,7 @@ export async function createOpenAIWebSocket({ client,
                             try {
                                 const channel = await client.channels.fetch(channelId);
                                 if (channel && channel.send) {
-                                    await channel.send(`${botLabel}: ${part.text}`);
+                                    channel.send(`${botLabel}: ${part.text}`);
                                 }
                             } catch (err) {
                                 log.error('Failed to send assistant response to Discord channel:', err);
@@ -98,7 +98,7 @@ export async function createOpenAIWebSocket({ client,
                             try {
                                 const channel = await client.channels.fetch(channelId);
                                 if (channel && channel.send) {
-                                    await channel.send(`${botLabel}: ${part.transcript}`);
+                                    channel.send(`${botLabel}: ${part.transcript}`);
                                 }
                             } catch (err) {
                                 log.error('Failed to send assistant audio transcript to Discord channel:', err);
