@@ -5,7 +5,7 @@ export function generateR2D2PCM({ sampleRate = 48000, durationSec = 0.2 } = {}) 
     // Generate a random sequence of 3-7 chirps
     const N_beeps = randomInt(3, 7);
     let bufferList = [];
-    const volume = 0.01; // 1% volume (to avoid clipping)
+    const volume = 0.02; // 1% volume (to avoid clipping)
     for (let i = 0; i < N_beeps; ++i) {
         const t = randomFloat(0.05, 0.25); // 50-250ms
         const N = Math.floor(t * sampleRate);
