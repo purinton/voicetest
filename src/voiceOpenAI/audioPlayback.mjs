@@ -17,10 +17,6 @@ export function createAudioPlayback(audioPlayer) {
             const resampler = new Resampler({ inRate: 24000, outRate: 48000, inChannels: 1, outChannels: 1, filterWindow: 8 });
             const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
             playbackStream = new PassThrough();
-            playbackStream.on('finish', () => {
-                playbackStream = null;
-                pcmCache = Buffer.alloc(0);
-            });
             playbackStream.pipe(resampler).pipe(opusEncoder);
             const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
             audioPlayer.play(resource);
@@ -32,6 +28,23 @@ export function createAudioPlayback(audioPlayer) {
         }
     }
 
-    return { handleAudio, reset: () => { } };
+    function reset() {
+        if (!playbackStream) return;
+        // flush remaining partial frame with silence padding
+        if (pcmCache.length) {
+            const remainder = pcmCache.length % PCM_FRAME_SIZE_BYTES;
+            const pad = remainder ? Buffer.alloc(PCM_FRAME_SIZE_BYTES - remainder) : Buffer.alloc(0);
+            playbackStream.write(Buffer.concat([pcmCache, pad]));
+        }
+        // end the stream to flush pipeline
+        playbackStream.end();
+        // cleanup after all audio is sent
+        playbackStream.once('finish', () => {
+            playbackStream = null;
+            pcmCache = Buffer.alloc(0);
+        });
+    }
+
+    return { handleAudio, reset };
 }
 
