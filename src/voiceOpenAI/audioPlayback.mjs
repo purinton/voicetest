@@ -33,7 +33,7 @@ export function createAudioPlayback(audioPlayer) {
     }
 
     function reset() {
-        playbackStream.end();
+        //playbackStream.end();
     }
 
     return { handleAudio, reset };
