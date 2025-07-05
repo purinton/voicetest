@@ -1,7 +1,7 @@
 import prism from 'prism-media';
 import { PassThrough } from 'stream';
 import { Resampler } from '@purinton/resampler';
-import { createAudioResource, StreamType } from '@discordjs/voice';
+import { createAudioResource, StreamType, AudioPlayerStatus } from '@discordjs/voice';
 
 const PCM_FRAME_SIZE_BYTES = 960 * 2;
 const JITTER_BUFFER_FRAMES = 5; // 100ms jitter (5 * 20ms frames)
@@ -30,21 +30,28 @@ export function createAudioPlayback(audioPlayer) {
 
 
     function reset() {
-        if (playbackStream) {
-            if (pcmCache.length > 0) {
-                const remainder = pcmCache.length % PCM_FRAME_SIZE_BYTES;
-                const framePad = remainder > 0 ? Buffer.alloc(PCM_FRAME_SIZE_BYTES - remainder) : Buffer.alloc(0);
-                const tailPad = Buffer.alloc(PCM_FRAME_SIZE_BYTES * JITTER_BUFFER_FRAMES * 2);
-                const flushed = Buffer.concat([pcmCache, framePad, tailPad]);
-                for (let offset = 0; offset < flushed.length; offset += PCM_FRAME_SIZE_BYTES) {
-                    playbackStream.write(flushed.subarray(offset, offset + PCM_FRAME_SIZE_BYTES));
-                }
+        if (!playbackStream) {
+            pcmCache = Buffer.alloc(0);
+            return;
+        }
+        if (pcmCache.length > 0) {
+            const remainder = pcmCache.length % PCM_FRAME_SIZE_BYTES;
+            const framePad = remainder > 0 ? Buffer.alloc(PCM_FRAME_SIZE_BYTES - remainder) : Buffer.alloc(0);
+            const tailPad = Buffer.alloc(PCM_FRAME_SIZE_BYTES * JITTER_BUFFER_FRAMES);
+            const flushed = Buffer.concat([pcmCache, framePad, tailPad]);
+            for (let offset = 0; offset < flushed.length; offset += PCM_FRAME_SIZE_BYTES) {
+                playbackStream.write(flushed.subarray(offset, offset + PCM_FRAME_SIZE_BYTES));
+            }
+        }
+        // signal end of stream
+        playbackStream.end();
+        // cleanup after playback finishes
+        audioPlayer.once('stateChange', (_, newState) => {
+            if (newState.status === AudioPlayerStatus.Idle) {
+                playbackStream = null;
                 pcmCache = Buffer.alloc(0);
             }
-            playbackStream.end();
-        }
-        playbackStream = null;
-        pcmCache = Buffer.alloc(0);
+        });
     }
 
     return { handleAudio, reset };
