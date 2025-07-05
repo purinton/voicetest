@@ -10,5 +10,5 @@ export function handleAudioDone({ playback, log }) {
     log.debug('OpenAI audio stream done, resetting playback');
     const silenceBuffer = Buffer.alloc(480 * 2 * 200 / 1000); // 200ms of silence at 48kHz, 16-bit stereo
     playback.handleAudio(silenceBuffer);
-    playback.reset();
+    setTimeout(() => { playback.reset() }, 200);
 }
