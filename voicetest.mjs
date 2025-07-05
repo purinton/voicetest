@@ -1,9 +1,22 @@
 #!/usr/bin/env node
 
+
 import 'dotenv/config';
 import mcpClient from '@purinton/mcp-client';
 import { createDiscord } from '@purinton/discord';
 import { log, fs, path, registerHandlers, registerSignals } from '@purinton/common';
+
+const voice = 'sage';
+
+function loadJsonFile(fileName) {
+    try {
+        const filePath = path(import.meta, fileName);
+        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (err) {
+        log.error(`Failed to read or parse ${fileName}:`, err);
+        process.exit(1);
+    }
+}
 
 async function main() {
     try {
@@ -24,24 +37,11 @@ async function main() {
             process.exit(1);
         }
 
-        const voice = 'ash';
-        let packageJson, version;
-        try {
-            packageJson = JSON.parse(fs.readFileSync(path(import.meta, 'package.json'), 'utf8'));
-            version = packageJson.version;
-        } catch (err) {
-            log.error('Failed to read or parse package.json:', err);
-            process.exit(1);
-        }
+        const packageJson = loadJsonFile('package.json');
+        const version = packageJson.version;
         const presence = { activities: [{ name: `voicetest v${version}`, type: 4 }], status: 'online' };
-        let mcpConfig, mcpServers;
-        try {
-            mcpConfig = JSON.parse(fs.readFileSync(path(import.meta, 'mcp.json'), 'utf8'));
-            mcpServers = mcpConfig.servers || [];
-        } catch (err) {
-            log.error('Failed to read or parse mcp.json:', err);
-            process.exit(1);
-        }
+        const mcpConfig = loadJsonFile('mcp.json');
+        const mcpServers = mcpConfig.servers || [];
         const mcpClients = {};
         let allMcpTools = [];
         for (const server of mcpServers) {
