@@ -5,6 +5,7 @@ export function generateR2D2PCM({ sampleRate = 48000, durationSec = 0.2 } = {}) 
     // Generate a random sequence of 3-7 chirps
     const N_beeps = randomInt(3, 7);
     let bufferList = [];
+    const volume = 0.25; // 25% volume
     for (let i = 0; i < N_beeps; ++i) {
         const t = randomFloat(0.05, 0.25); // 50-250ms
         const N = Math.floor(t * sampleRate);
@@ -38,7 +39,7 @@ export function generateR2D2PCM({ sampleRate = 48000, durationSec = 0.2 } = {}) 
             else if (t_sec < t - R) env = S;
             else if (t_sec < t) env = S * (1 - (t_sec - (t - R)) / R);
             else env = 0;
-            samples[n] = x * env;
+            samples[n] = x * env * volume;
         }
         // Convert to PCM16
         const buf = Buffer.alloc(N * 2);
