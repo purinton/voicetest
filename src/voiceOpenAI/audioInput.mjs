@@ -15,6 +15,8 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
     const waitingQueue = [];
     const userBuffers = new Map(); // userId -> Buffer[]
     let pendingFrames = [];
+    let backpressurePaused = false;
+    let resumeInterval = null;
 
     async function sendSpeakerLabel(userId) {
         if (userId === openAIWS.lastSpeakerId) return;
@@ -49,9 +51,17 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
 
     function sendAudioFrame(frame) {
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-            if (openAIWS.bufferedAmount > MAX_WS_BUFFERED_AMOUNT) {
-                log.warn('WebSocket buffer high, dropping audio frame');
-                return;
+            // pause resampler under backpressure rather than dropping frames
+            if (openAIWS.bufferedAmount > MAX_WS_BUFFERED_AMOUNT && !backpressurePaused) {
+                log.warn('WebSocket backpressure detected, pausing audio input');
+                resampler.pause(); backpressurePaused = true;
+                resumeInterval = setInterval(() => {
+                    if (openAIWS.bufferedAmount < MAX_WS_BUFFERED_AMOUNT / 2) {
+                        log.debug('WebSocket buffer drained, resuming audio input');
+                        resampler.resume(); backpressurePaused = false;
+                        clearInterval(resumeInterval);
+                    }
+                }, 100);
             }
             const payload = JSON.stringify({ type: 'input_audio_buffer.append', audio: frame.toString('base64') });
             openAIWS.send(payload, err => {
