@@ -34,7 +34,7 @@ export function createAudioPlayback(audioPlayer) {
             if (pcmCache.length > 0) {
                 const remainder = pcmCache.length % PCM_FRAME_SIZE_BYTES;
                 const framePad = remainder > 0 ? Buffer.alloc(PCM_FRAME_SIZE_BYTES - remainder) : Buffer.alloc(0);
-                const tailPad = Buffer.alloc(PCM_FRAME_SIZE_BYTES * JITTER_BUFFER_FRAMES);
+                const tailPad = Buffer.alloc(PCM_FRAME_SIZE_BYTES * JITTER_BUFFER_FRAMES * 2);
                 const flushed = Buffer.concat([pcmCache, framePad, tailPad]);
                 for (let offset = 0; offset < flushed.length; offset += PCM_FRAME_SIZE_BYTES) {
                     playbackStream.write(flushed.subarray(offset, offset + PCM_FRAME_SIZE_BYTES));
@@ -42,9 +42,11 @@ export function createAudioPlayback(audioPlayer) {
                 pcmCache = Buffer.alloc(0);
             }
             playbackStream.end();
+            playbackStream.on('finish', () => {
+                playbackStream = null;
+                pcmCache = Buffer.alloc(0);
+            });
         }
-        playbackStream = null;
-        pcmCache = Buffer.alloc(0);
     }
 
     return { handleAudio, reset };
