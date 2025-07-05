@@ -68,7 +68,7 @@ export async function createOpenAIWebSocket({ client,
                 const channel = await client.channels.fetch(channelId);
                 if (channel && channel.send) {
                     // Tag the last speaker instead of generic 'User:'
-                    const speakerId = ws._lastSpeakerId || null;
+                    const speakerId = ws.lastSpeakerId || null;
                     const label = speakerId ? `<@${speakerId}>` : 'User';
                     await channel.send({
                         content: `${label}: ${msg.transcript}`,
