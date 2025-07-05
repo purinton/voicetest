@@ -66,7 +66,7 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 500 },
         });
-        opusStream.once('end', () => {
+        opusStream.on('end', () => {
             log.debug(`User ${userId} stopped speaking`);
             if (currentSpeakerId === userId) {
                 if (waitingQueue.length > 0) {
