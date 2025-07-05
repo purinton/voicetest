@@ -20,10 +20,11 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
         let beepInterval = null;
         let stopped = false;
         if (hasFunctionCall && !isNoResponse && typeof playBeepFn === 'function') {
-            // Play immediately, then every 1s
+            // Play initial beep (default 432Hz, 100ms)
             playBeepFn();
+            // Play interval beeps (864Hz, 250ms)
             beepInterval = setInterval(() => {
-                if (!stopped) playBeepFn();
+                if (!stopped) playBeepFn({ freq: 864, durationSec: 0.25 });
             }, 1000);
         }
 

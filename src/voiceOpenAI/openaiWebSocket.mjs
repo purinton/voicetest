@@ -125,7 +125,8 @@ export async function createOpenAIWebSocket({ client,
                 }
             }
             const result = await handleFunctionCall({
-                msg, ws, log, sessionConfig, client, channelId, playBeepFn: () => playBeep(audioPlayer, log),
+                msg, ws, log, sessionConfig, client, channelId,
+                playBeepFn: (opts) => playBeep(audioPlayer, log, opts),
                 mcpTools, mcpClients // pass to handler
             });
             if (result && result.handled) {

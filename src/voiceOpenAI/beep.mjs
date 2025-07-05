@@ -15,8 +15,9 @@ export function generateBeepPCM({ sampleRate = 48000, durationSec = 0.1, freq = 
 }
 
 // Play beep to Discord using the audio player
-export function playBeep(audioPlayer, log, { sampleRate = 48000, durationSec = 0.1, freq = 432, volume = 0.5 } = {}) {
+export function playBeep(audioPlayer, log, opts = {}) {
     if (!audioPlayer) return;
+    const { sampleRate = 48000, durationSec = 0.1, freq = 432, volume = 0.5 } = opts;
     const beepPCM = generateBeepPCM({ sampleRate, durationSec, freq, volume });
     const stream = new PassThrough();
     stream.end(beepPCM);
@@ -25,7 +26,7 @@ export function playBeep(audioPlayer, log, { sampleRate = 48000, durationSec = 0
     const resource = createAudioResource(opusEncoder, { inputType: StreamType.Opus });
     try {
         audioPlayer.play(resource);
-        //log.debug('Played beep (432Hz, 100ms)');
+        //log.debug(`Played beep (${freq}Hz, ${durationSec * 1000}ms)`);
     } catch (e) {
         log.error('Error playing beep:', e);
     }
