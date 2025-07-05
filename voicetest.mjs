@@ -18,11 +18,23 @@ async function main() {
         }
 
         const voice = 'ash';
-        const packageJson = JSON.parse(fs.readFileSync(path(import.meta, 'package.json'), 'utf8'));
-        const version = packageJson.version;
+        let packageJson, version;
+        try {
+            packageJson = JSON.parse(fs.readFileSync(path(import.meta, 'package.json'), 'utf8'));
+            version = packageJson.version;
+        } catch (err) {
+            log.error('Failed to read or parse package.json:', err);
+            process.exit(1);
+        }
         const presence = { activities: [{ name: `voicetest v${version}`, type: 4 }], status: 'online' };
-        const mcpConfig = JSON.parse(fs.readFileSync(path(import.meta, 'mcp.json'), 'utf8'));
-        const mcpServers = mcpConfig.servers || [];
+        let mcpConfig, mcpServers;
+        try {
+            mcpConfig = JSON.parse(fs.readFileSync(path(import.meta, 'mcp.json'), 'utf8'));
+            mcpServers = mcpConfig.servers || [];
+        } catch (err) {
+            log.error('Failed to read or parse mcp.json:', err);
+            process.exit(1);
+        }
         const mcpClients = {};
         let allMcpTools = [];
         for (const server of mcpServers) {
