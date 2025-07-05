@@ -8,10 +8,13 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
     const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
 
     let currentSpeakerId = null;
+    let lastSpeakerId = null;
     const waitingQueue = [];
     const userBuffers = new Map(); // userId -> Buffer[]
 
     async function sendSpeakerLabel(userId) {
+        if (userId === lastSpeakerId) return;
+        lastSpeakerId = userId;
         let speakerName = 'Unknown User';
         try {
             if (voiceConnection && voiceConnection.joinConfig && voiceConnection.joinConfig.guildId && client) {
