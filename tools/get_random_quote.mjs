@@ -2,7 +2,6 @@ import fetch from 'node-fetch';
 
 export default async function ({ call_id, ws, log }) {
   try {
-    // Using ZenQuotes.io for free random quotes
     const res = await fetch('https://zenquotes.io/api/random');
     const data = await res.json();
     const quoteObj = Array.isArray(data) && data[0] ? data[0] : { q: 'No quote found', a: '' };

@@ -33,7 +33,6 @@ function handleOpenAIAudio(audioBuffer) {
     openaiPcmCache = Buffer.concat([openaiPcmCache, audioBuffer]);
     if (!handleOpenAIAudio.playbackStream) {
         handleOpenAIAudio.playbackStream = new PassThrough();
-        // Resample from 24kHz to 48kHz using Resampler
         const resampler = new Resampler({
             inRate: 24000,
             outRate: 48000,
@@ -87,7 +86,6 @@ client.once('ready', async () => {
             if (!userConverters.has(userId)) {
                 const opusDecoder = new prism.opus.Decoder({ frameSize: 960, channels: 1, rate: 48000 });
                 opusStream.pipe(opusDecoder);
-                // Resample from 48kHz to 24kHz using Resampler
                 const resampler = new Resampler({
                     inRate: 48000,
                     outRate: 24000,

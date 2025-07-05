@@ -1,4 +1,3 @@
-// Handles all function/tool message types for OpenAI WebSocket
 import path from 'path';
 import fs from 'fs';
 
@@ -20,9 +19,7 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
         let beepInterval = null;
         let stopped = false;
         if (hasFunctionCall && !isNoResponse && typeof playBeepFn === 'function') {
-            // Play initial beep (default 432Hz, 100ms)
             playBeepFn({ freq: 432, durationSec: 0.1, volume: 0.25 });
-            // Play interval beeps (864Hz, 250ms)
             beepInterval = setInterval(() => {
                 if (!stopped) playBeepFn({ freq: 864, durationSec: 0.05, volume: 0.25 });
             }, 500);
@@ -42,7 +39,6 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                         log.error('Failed to send function call message to Discord channel:', err);
                     }
                 }
-                // Route MCP tool calls
                 const mcpTool = mcpTools && mcpTools.find(t => t.name === fc.name && t.mcp_tool);
                 if (mcpTool && mcpClients && mcpClients[mcpTool.mcp_label]) {
                     try {
@@ -75,14 +71,11 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                                         if (typeof parsed === 'object') {
                                             text = JSON.stringify(parsed);
                                         }
-                                    } catch (e) {
-                                        // Not JSON, leave as is
-                                    }
+                                    } catch { }
                                     aiContent += text + '\n';
                                 }
                             }
                         }
-                        // Feed result back to OpenAI as a user message
                         if (aiContent && ws && ws.readyState === ws.OPEN) {
                             const event = {
                                 event_id: `event_${Date.now()}`,
@@ -102,7 +95,6 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                             ws.send(JSON.stringify(event));
                             ws.send(JSON.stringify({ type: 'response.create' }));
                             log.debug('[OpenAI WS] Sent MCP result as user message');
-                            // Prevent outer handler from sending another response.create
                             stopped = true;
                             if (beepInterval) clearInterval(beepInterval);
                             return { handled: true, skipResponse: true, restart: false };
@@ -112,16 +104,13 @@ export async function handleFunctionCall({ msg, ws, log, client, channelId, play
                     }
                     continue;
                 }
-                // Local tool fallback
                 try {
                     const toolPath = path.resolve(process.cwd(), 'tools', `${fc.name}.mjs`);
                     if (fs.existsSync(toolPath)) {
                         const handler = (await import(`file://${toolPath}`)).default;
                         let args = {};
                         try { args = fc.arguments ? JSON.parse(fc.arguments) : {}; } catch { }
-                        // Capture return value from handler
                         const result = await handler({ call_id: fc.call_id, ws, log, args, client, channelId, restart });
-                        // If handler returns { restart: true }, propagate up
                         if (result && result.restart) {
                             stopped = true;
                             if (beepInterval) clearInterval(beepInterval);

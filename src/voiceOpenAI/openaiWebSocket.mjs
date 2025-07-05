@@ -67,7 +67,6 @@ export async function createOpenAIWebSocket({ client,
             try {
                 const channel = await client.channels.fetch(channelId);
                 if (channel && channel.send) {
-                    // Tag the last speaker instead of generic 'User:'
                     const speakerId = ws.lastSpeakerId || null;
                     const label = speakerId ? `<@${speakerId}>` : 'User';
                     channel.send({
@@ -127,7 +126,7 @@ export async function createOpenAIWebSocket({ client,
             const result = await handleFunctionCall({
                 msg, ws, log, sessionConfig, client, channelId,
                 playBeepFn: (opts) => playBeep(audioPlayer, log, opts),
-                mcpTools, mcpClients // pass to handler
+                mcpTools, mcpClients
             });
             if (result && result.handled) {
                 if (result.restart && typeof onRestart === 'function') {

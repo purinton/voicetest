@@ -9,7 +9,6 @@ export default async function ({ call_id, ws, log, args = {} }) {
     return `${day}, ${iso}`;
   };
 
-  // Always include UTC
   const result = {
     UTC: {
       unix: Math.floor(now.getTime() / 1000),
@@ -17,7 +16,6 @@ export default async function ({ call_id, ws, log, args = {} }) {
     }
   };
 
-  // Handle timezones array if provided
   if (Array.isArray(args.timezones)) {
     for (const tz of args.timezones) {
       try {

@@ -1,6 +1,4 @@
-// Session config for OpenAI WebSocket
 export function getSessionConfig({ instructions, voice, tools }) {
-    // Accept merged tools as argument (local + MCP)
     return {
         modalities: ['text', 'audio'],
         instructions,

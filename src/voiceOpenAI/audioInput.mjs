@@ -2,13 +2,12 @@ import WebSocket from 'ws';
 import prism from 'prism-media';
 import { Resampler } from '@purinton/resampler';
 
-// Add max buffer constant to control WS backpressure
 const MAX_WS_BUFFERED_AMOUNT = 5 * 1024 * 1024; // 5MB
 const PCM_FRAME_SIZE_BYTES_24 = 480 * 2;
 const FRAME_BATCH_COUNT = 5; // batch 5 frames (~100ms) per send
 
 export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
-    const userConverters = new Map(); // converters are pooled per user and not destroyed on silence
+    const userConverters = new Map();
 
     let currentSpeakerId = null;
     openAIWS.lastSpeakerId = null;
@@ -51,7 +50,6 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
 
     function sendAudioFrame(frame) {
         if (openAIWS && openAIWS.readyState === WebSocket.OPEN) {
-            // pause resampler under backpressure rather than dropping frames
             if (openAIWS.bufferedAmount > MAX_WS_BUFFERED_AMOUNT && !backpressurePaused) {
                 log.warn('WebSocket backpressure detected, pausing audio input');
                 resampler.pause(); backpressurePaused = true;
@@ -86,7 +84,6 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
             end: { behavior: 'silence', duration: 500 },
         });
         if (!userConverters.has(userId)) {
-            // when acquiring lock, signal speaker label
             if (currentSpeakerId === null) {
                 sendSpeakerLabel(userId); // now async, but fire and forget
             }
@@ -101,10 +98,8 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
                     const frame = cache.subarray(0, PCM_FRAME_SIZE_BYTES_24);
                     cache = cache.subarray(PCM_FRAME_SIZE_BYTES_24);
                     if (currentSpeakerId === null) {
-                        // No one is speaking: this user gets the lock
                         currentSpeakerId = userId;
-                        // Notify OpenAI of speaker and track current speaker
-                        sendSpeakerLabel(userId); // now async, but fire and forget
+                        sendSpeakerLabel(userId);
                         openAIWS.currentSpeakerId = userId;
                         pendingFrames.push(frame);
                         if (pendingFrames.length >= FRAME_BATCH_COUNT) {
@@ -112,14 +107,12 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
                             pendingFrames = [];
                         }
                     } else if (currentSpeakerId === userId) {
-                        // This user holds the lock, send audio
                         pendingFrames.push(frame);
                         if (pendingFrames.length >= FRAME_BATCH_COUNT) {
                             sendAudioFrame(Buffer.concat(pendingFrames));
                             pendingFrames = [];
                         }
                     } else {
-                        // Another user is speaking, buffer this user's audio
                         if (!userBuffers.has(userId)) userBuffers.set(userId, []);
                         userBuffers.get(userId).push(frame);
                         if (!waitingQueue.includes(userId)) waitingQueue.push(userId);
@@ -133,15 +126,12 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
 
     const onSpeechEnd = (userId) => {
         log.debug(`User ${userId} stopped speaking`);
-        // flush any remaining frames on speech end
         if (pendingFrames.length > 0) {
             sendAudioFrame(Buffer.concat(pendingFrames));
             pendingFrames = [];
         }
         if (currentSpeakerId === userId) {
-            // Release the lock from the current speaker
             currentSpeakerId = null;
-            // Process the next user in the waiting queue, if any
             if (waitingQueue.length > 0) {
                 const nextUserId = waitingQueue.shift();
                 currentSpeakerId = nextUserId;
@@ -151,7 +141,6 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
     };
     voiceConnection.receiver.speaking.on('end', onSpeechEnd);
 
-    // Return a cleanup function to remove listeners and destroy converters
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
         voiceConnection.receiver.speaking.off('end', onSpeechEnd);
