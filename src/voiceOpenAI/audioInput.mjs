@@ -66,19 +66,6 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
         const opusStream = voiceConnection.receiver.subscribe(userId, {
             end: { behavior: 'silence', duration: 500 },
         });
-        opusStream.on('end', () => {
-            log.debug(`User ${userId} stopped speaking`);
-            if (currentSpeakerId === userId) {
-                if (waitingQueue.length > 0) {
-                    const nextUserId = waitingQueue.shift();
-                    currentSpeakerId = nextUserId;
-                    processBufferedAudio(nextUserId);
-                } else {
-                    currentSpeakerId = null;
-                }
-            }
-            userBuffers.set(userId, []);
-        });
         if (!userConverters.has(userId)) {
             // when acquiring lock, signal speaker label
             if (currentSpeakerId === null) {
@@ -117,9 +104,25 @@ export function setupAudioInput({ client, voiceConnection, openAIWS, log }) {
     };
     voiceConnection.receiver.speaking.on('start', onSpeechStart);
 
+    const onSpeechEnd = (userId) => {
+        log.debug(`User ${userId} stopped speaking`);
+        if (currentSpeakerId === userId) {
+            // Release the lock from the current speaker
+            currentSpeakerId = null;
+            // Process the next user in the waiting queue, if any
+            if (waitingQueue.length > 0) {
+                const nextUserId = waitingQueue.shift();
+                currentSpeakerId = nextUserId;
+                processBufferedAudio(nextUserId);
+            }
+        }
+    };
+    voiceConnection.receiver.speaking.on('end', onSpeechEnd);
+
     // Return a cleanup function to remove listeners and destroy converters
     return () => {
         voiceConnection.receiver.speaking.off('start', onSpeechStart);
+        voiceConnection.receiver.speaking.off('end', onSpeechEnd);
         for (const { resampler, opusDecoder } of userConverters.values()) {
             try { resampler?.unpipe?.(); } catch { };
             try { resampler?.destroy?.(); } catch { };
