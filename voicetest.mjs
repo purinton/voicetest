@@ -14,6 +14,13 @@ async function main() {
         const missingEnv = requiredEnv.filter((key) => !process.env[key]);
         if (missingEnv.length > 0) {
             log.error(`Missing required environment variables: ${missingEnv.join(', ')}`);
+            log.error('Please set these variables in your environment or in a .env file.');
+            log.error('Example:');
+            log.error('  DISCORD_TOKEN=your_discord_token_here');
+            log.error('  GUILD_ID=your_guild_id_here');
+            log.error('  VOICE_CHANNEL_ID=your_voice_channel_id_here');
+            log.error('  OPENAI_API_KEY=your_openai_api_key_here');
+            log.error('See instructions.txt for more details.');
             process.exit(1);
         }
 
