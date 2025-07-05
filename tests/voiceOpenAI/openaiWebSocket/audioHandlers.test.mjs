@@ -8,10 +8,14 @@ describe('audioHandlers', () => {
         handleAudioDelta({ msg, playback: mockPlayback, log: {} });
         expect(mockPlayback.handleAudio).toHaveBeenCalled();
     });
-    it('handleAudioDone calls reset', () => {
+    it('handleAudioDone calls reset after 200ms', async () => {
+        jest.useFakeTimers();
         const mockPlayback = { handleAudio: jest.fn(), reset: jest.fn() };
         handleAudioDone({ playback: mockPlayback, log: { debug: jest.fn() } });
         expect(mockPlayback.handleAudio).toHaveBeenCalled();
+        expect(mockPlayback.reset).not.toHaveBeenCalled();
+        jest.advanceTimersByTime(200);
         expect(mockPlayback.reset).toHaveBeenCalled();
+        jest.useRealTimers();
     });
 });
