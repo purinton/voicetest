@@ -12,12 +12,8 @@ export function createAudioPlayback(audioPlayer) {
     function handleAudio(audioBuffer) {
         if (!audioPlayer) return;
         pcmCache = Buffer.concat([pcmCache, audioBuffer]);
-        // Initialize playback once jitter buffer is filled
         if (!playbackStream) {
-            if (pcmCache.length < PCM_FRAME_SIZE_BYTES * JITTER_BUFFER_FRAMES) {
-                // Not enough buffered for jitter, wait
-                return;
-            }
+            if (pcmCache.length < PCM_FRAME_SIZE_BYTES * JITTER_BUFFER_FRAMES) return;
             const resampler = new Resampler({ inRate: 24000, outRate: 48000, inChannels: 1, outChannels: 1, filterWindow: 8 });
             const opusEncoder = new prism.opus.Encoder({ frameSize: 960, channels: 1, rate: 48000 });
             playbackStream = new PassThrough();
@@ -34,6 +30,18 @@ export function createAudioPlayback(audioPlayer) {
 
 
     function reset() {
+        if (playbackStream) {
+            if (pcmCache.length > 0) {
+                const remainder = pcmCache.length % PCM_FRAME_SIZE_BYTES;
+                const padding = remainder > 0 ? Buffer.alloc(PCM_FRAME_SIZE_BYTES - remainder) : Buffer.alloc(0);
+                const flushed = Buffer.concat([pcmCache, padding]);
+                for (let offset = 0; offset < flushed.length; offset += PCM_FRAME_SIZE_BYTES) {
+                    playbackStream.write(flushed.subarray(offset, offset + PCM_FRAME_SIZE_BYTES));
+                }
+                pcmCache = Buffer.alloc(0);
+            }
+            playbackStream.end();
+        }
         playbackStream = null;
         pcmCache = Buffer.alloc(0);
     }
