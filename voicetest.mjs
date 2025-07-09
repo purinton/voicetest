@@ -6,7 +6,8 @@ import mcpClient from '@purinton/mcp-client';
 import { createDiscord } from '@purinton/discord';
 import { log, fs, path, registerHandlers, registerSignals } from '@purinton/common';
 
-const voice = 'sage';
+const voice = 'ash';
+const volume = 0.9;
 
 function loadJsonFile(fileName) {
     try {
@@ -84,6 +85,7 @@ async function main() {
                 version,
                 registerSignals,
                 voice,
+                volume,
                 mcpClients,
                 mcpTools: allMcpTools,
                 localTools: allLocalTools,

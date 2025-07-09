@@ -1,6 +1,6 @@
 // events/ready.mjs
 export default async function (ctx, client) {
-    const { log, presence, registerSignals, voice, mcpClients, mcpTools, localTools, allTools, version } = ctx;
+    const { log, presence, registerSignals, voice, volume, mcpClients, mcpTools, localTools, allTools, version } = ctx;
     log.info(`Logged in as ${client.user.tag}`);
     if (presence) client.user.setPresence(presence);
     const { setupVoiceOpenAI } = await import('../src/voiceOpenAI.mjs');
@@ -18,6 +18,7 @@ export default async function (ctx, client) {
                 presence,
                 registerSignals,
                 voice,
+                volume,
                 mcpClients,
                 mcpTools,
                 localTools,
