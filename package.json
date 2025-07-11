@@ -1,7 +1,7 @@
 {
     "name": "@purinton/voicetest",
     "type": "module",
-    "version": "1.0.17",
+    "version": "1.0.18",
     "description": "VoiceTest: a real-time voice-enabled Discord bot that streams speech to OpenAI GPT-4o and plays AI-driven voice responses.",
     "main": "voicetest.mjs",
     "scripts": {
@@ -28,7 +28,7 @@
     },
     "homepage": "https://github.com/purinton/voicetest#readme",
     "devDependencies": {
-        "jest": "^30.0.2"
+        "jest": "^30.0.4"
     },
     "jest": {
         "testEnvironment": "node",
@@ -41,12 +41,12 @@
     "dependencies": {
         "@discordjs/opus": "^0.10.0",
         "@discordjs/voice": "^0.18.0",
-        "@purinton/common": "^1.0.16",
-        "@purinton/discord": "^1.0.11",
-        "@purinton/mcp-client": "^1.0.6",
-        "@purinton/openweathermap": "^1.0.4",
-        "@purinton/resampler": "^1.0.2",
-        "dotenv": "^17.0.0",
+        "@purinton/common": "^1.0.17",
+        "@purinton/discord": "^1.0.14",
+        "@purinton/mcp-client": "^1.0.7",
+        "@purinton/openweathermap": "^1.0.5",
+        "@purinton/resampler": "^1.0.3",
+        "dotenv": "^17.2.0",
         "node-fetch": "^3.3.2"
     }
 }
