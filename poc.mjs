@@ -123,8 +123,7 @@ client.once('ready', async () => {
 });
 
 function createOpenAIWebSocket() {
-    const url =
-        'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
+    const url = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
 
     const ws = new WebSocket(url, {
         headers: {
